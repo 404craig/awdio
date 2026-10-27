@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>awdio</title>
+    <meta name="description" content="Listen to your documents." />
+    <meta name="theme-color" content="#FAFAF8" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icons/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="awdio" />
+    <script>
+      // Apply the last-known theme and reading prefs before first paint (no flash).
+      (function () {
+        try {
+          var s = JSON.parse(localStorage.getItem("awdio.settings") || "{}");
+          var t = s.theme || "system";
+          if (t === "system") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          var r = document.documentElement;
+          r.dataset.theme = t;
+          if (s.textSize) r.style.setProperty("--reading-size", s.textSize + "px");
+          if (s.font === "sans") r.dataset.font = "sans";
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
