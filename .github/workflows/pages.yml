@@ -34,6 +34,8 @@ jobs:
           # Project pages live at https://<user>.github.io/<repo>/: keep this equal to the repo name.
           BASE_PATH: /awdio/
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist
