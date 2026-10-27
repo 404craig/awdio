@@ -46,5 +46,8 @@ async def preview(engine: str, voice_id: str, services: Services = Depends(get_s
     engine_id, voice = await resolve_voice(services, engine, voice_id)
     with engine_errors():
         entry = await asyncio.wrap_future(services.synth.preview(engine_id, voice))
-    return FileResponse(services.cache.file_path(entry.key, entry.format), media_type=MEDIA_TYPES[entry.format],
-                        headers={"Cache-Control": LONG_CACHE})
+    return FileResponse(
+        services.cache.file_path(entry.key, entry.format),
+        media_type=MEDIA_TYPES[entry.format],
+        headers={"Cache-Control": LONG_CACHE},
+    )

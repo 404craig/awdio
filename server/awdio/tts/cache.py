@@ -71,11 +71,10 @@ class AudioCache:
     def lookup(self, key: str) -> CachedAudio | None:
         try:
             meta = json.loads((self._dir / f"{key}.json").read_text())
-        except (FileNotFoundError, ValueError):
+            entry = CachedAudio(key, meta["format"], meta["durationSec"], [tuple(t) for t in meta["timings"]])
+        except (FileNotFoundError, ValueError, KeyError, TypeError):
             return None
-        if not self.file_path(key, meta["format"]).exists():
-            return None
-        return CachedAudio(key, meta["format"], meta["durationSec"], [tuple(t) for t in meta["timings"]])
+        return entry if self.file_path(key, entry.format).exists() else None
 
     def store(self, key: str, result: SynthResult, *, pad_seconds: float, owner: CacheOwner) -> CachedAudio:
         if result.mp3 is not None:

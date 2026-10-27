@@ -53,10 +53,10 @@ class SynthContext:
 
 @dataclass
 class SynthResult:
-    audio: np.ndarray                         # float32 mono PCM; empty when only `mp3` is available
+    audio: np.ndarray  # float32 mono PCM; empty when only `mp3` is available
     sample_rate: int
-    word_timings: list[tuple[float, float]]   # one per word of the input text
-    mp3: bytes | None = None                  # already-encoded audio to store untouched (no ffmpeg to decode it)
+    word_timings: list[tuple[float, float]]  # one per word of the input text
+    mp3: bytes | None = None  # already-encoded audio to store untouched (no ffmpeg to decode it)
 
 
 class Engine(Protocol):
@@ -68,5 +68,6 @@ class Engine(Protocol):
     def configured(self) -> bool: ...
     def warm(self) -> None:
         """Load whatever is slow to load. Always called on the synthesis worker thread."""
+
     def voices(self) -> list[Voice]: ...
     def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthResult: ...

@@ -15,9 +15,34 @@ from .structure import promote_title
 
 _HEADINGS = {f"h{i}" for i in range(1, 7)}
 _BLOCK_TAGS = _HEADINGS | {
-    "p", "div", "section", "article", "main", "aside", "header", "footer", "figure", "figcaption",
-    "li", "ul", "ol", "dl", "dt", "dd", "blockquote", "pre", "table", "thead", "tbody", "tfoot",
-    "tr", "td", "th", "caption", "hr", "body",
+    "p",
+    "div",
+    "section",
+    "article",
+    "main",
+    "aside",
+    "header",
+    "footer",
+    "figure",
+    "figcaption",
+    "li",
+    "ul",
+    "ol",
+    "dl",
+    "dt",
+    "dd",
+    "blockquote",
+    "pre",
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "td",
+    "th",
+    "caption",
+    "hr",
+    "body",
 }
 _BLOCK_TAG_LIST = sorted(_BLOCK_TAGS)
 _SKIP_TAGS = ["script", "style", "nav", "head", "svg", "math"]
@@ -45,8 +70,10 @@ def parse_epub(path: Path) -> ParsedDocument:
 
 
 def _is_navigation(item: epub.EpubItem) -> bool:
-    return isinstance(item, epub.EpubNav) or "nav" in getattr(item, "properties", []) or bool(
-        _NAV_NAME.search(Path(item.get_name()).stem)
+    return (
+        isinstance(item, epub.EpubNav)
+        or "nav" in getattr(item, "properties", [])
+        or bool(_NAV_NAME.search(Path(item.get_name()).stem))
     )
 
 

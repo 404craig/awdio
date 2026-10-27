@@ -41,19 +41,36 @@ def create_app(config: Config | None = None, engines: EngineFactory = default_en
         if config.warm_engines:
             for engine in services.engines.all():
                 services.synth.warm(engine)
-        log.info("awdio %s ready (data: %s, PIN %s, audio %s)", __version__, config.data_dir,
-                 "on" if config.access_pin else "off", config.audio_format)
+        log.info(
+            "awdio %s ready (data: %s, PIN %s, audio %s)",
+            __version__,
+            config.data_dir,
+            "on" if config.access_pin else "off",
+            config.audio_format,
+        )
         try:
             yield
         finally:
             services.close()
 
-    app = FastAPI(title="awdio", version=__version__, lifespan=lifespan)
+    app = FastAPI(
+        title="awdio",
+        version=__version__,
+        lifespan=lifespan,
+        docs_url="/api/docs",
+        openapi_url="/api/openapi.json",
+        redoc_url=None,
+    )
     install_error_handlers(app)
     app.middleware("http")(auth.pin_middleware)
     app.add_middleware(GZipMiddleware, minimum_size=1024)
-    app.add_middleware(CORSMiddleware, allow_origins=list(config.dev_cors_origins), allow_credentials=True,
-                       allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(config.dev_cors_origins),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     for module in (health, auth, documents, audio, voices, settings):
         app.include_router(module.router)
     app.include_router(static_router(config.web_dist))

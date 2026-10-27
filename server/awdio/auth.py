@@ -23,7 +23,9 @@ class _Attempts:
 class PinGate:
     def __init__(self, pin: str | None, secret: str) -> None:
         self._pin = pin
-        self._token = hmac.new(secret.encode(), f"awdio-session|{pin}".encode(), hashlib.sha256).hexdigest() if pin else ""
+        self._token = (
+            hmac.new(secret.encode(), f"awdio-session|{pin}".encode(), hashlib.sha256).hexdigest() if pin else ""
+        )
         self._attempts: dict[str, _Attempts] = {}
         self._lock = threading.Lock()
 

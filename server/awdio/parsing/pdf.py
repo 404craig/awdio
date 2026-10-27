@@ -12,9 +12,9 @@ import pymupdf
 
 from .base import BlockKind, NoTextError, ParsedDocument, ParseError, RawBlock
 
-MARGIN_BAND = 0.12          # top/bottom fraction of the page where running headers/footers live
-RUNNING_MIN_SHARE = 0.4     # a running header/footer appears on at least this share of pages ...
-RUNNING_MIN_PAGES = 3       # ... and on at least this many pages
+MARGIN_BAND = 0.12  # top/bottom fraction of the page where running headers/footers live
+RUNNING_MIN_SHARE = 0.4  # a running header/footer appears on at least this share of pages ...
+RUNNING_MIN_PAGES = 3  # ... and on at least this many pages
 RUNNING_Y_TOLERANCE = 0.03  # fraction of page height
 HEADING_RATIO = 1.15
 SMALL_RATIO = 0.85
@@ -23,7 +23,9 @@ MAX_HEADING_WORDS = 30
 BOLD_HEADING_WORDS = 12
 
 _SENTENCE_END = tuple('.!?:"”’)…')
-_GLYPH_BULLET = re.compile(r"^\s*[\u2022\u25e6\u25aa\u25ab\u2023\u2043\u2219\u25cf\u25cb\u25a0\u25a1\u2013*\-\uf0b7\uf0a7]\s+")
+_GLYPH_BULLET = re.compile(
+    r"^\s*[\u2022\u25e6\u25aa\u25ab\u2023\u2043\u2219\u25cf\u25cb\u25a0\u25a1\u2013*\-\uf0b7\uf0a7]\s+"
+)
 _NUMBER_BULLET = re.compile(r"^\s*\d+[.)]\s+")
 _PAGE_NUMBER = re.compile(
     r"^(page\s*)?(\d+|(?=[ivxlcdm])m{0,3}(cm|cd|d?c{0,3})(xc|xl|l?x{0,3})(ix|iv|v?i{0,3}))(\s*(of|/)\s*\d+)?$",
@@ -76,9 +78,10 @@ def parse_pdf(path: Path) -> ParsedDocument:
     with doc:
         if doc.needs_pass:
             raise ParseError("the PDF is password-protected")
-        pages = [_page_rows(page, i) for i, page in enumerate(doc)]
-        sizes = [(page.rect.width, page.rect.height) for page in doc]
-        labels = [page.get_label() or str(i + 1) for i, page in enumerate(doc)]
+        pdf_pages = [doc.load_page(i) for i in range(doc.page_count)]
+        pages = [_page_rows(page, i) for i, page in enumerate(pdf_pages)]
+        sizes = [(page.rect.width, page.rect.height) for page in pdf_pages]
+        labels = [page.get_label() or str(i + 1) for i, page in enumerate(pdf_pages)]
         meta_title = (doc.metadata or {}).get("title") or None
 
     rows = [r for page in pages for r in page]
@@ -97,6 +100,7 @@ def parse_pdf(path: Path) -> ParsedDocument:
 
 # --- extraction ------------------------------------------------------------------------------
 
+
 def _page_rows(page: pymupdf.Page, index: int) -> list[_Row]:
     rows: list[_Row] = []
     data = page.get_text("dict", flags=pymupdf.TEXTFLAGS_TEXT)
@@ -111,13 +115,18 @@ def _page_rows(page: pymupdf.Page, index: int) -> list[_Row]:
             for s in spans:
                 weight[round(s["size"] * 2) / 2] += len(s["text"].strip())
             x0, y0, x1, y1 = line["bbox"]
-            rows.append(_Row(
-                page=index,
-                text="".join(s["text"] for s in line["spans"]).strip(),
-                size=weight.most_common(1)[0][0],
-                bold=all(_is_bold(s) for s in spans),
-                x0=x0, y0=y0, x1=x1, y1=y1,
-            ))
+            rows.append(
+                _Row(
+                    page=index,
+                    text="".join(s["text"] for s in line["spans"]).strip(),
+                    size=weight.most_common(1)[0][0],
+                    bold=all(_is_bold(s) for s in spans),
+                    x0=x0,
+                    y0=y0,
+                    x1=x1,
+                    y1=y1,
+                )
+            )
     return rows
 
 
@@ -134,6 +143,7 @@ def _body_size(rows: list[_Row]) -> float:
 
 
 # --- running headers / footers ---------------------------------------------------------------
+
 
 def _running_key(text: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"\d+", "#", text.lower())).strip()
@@ -172,6 +182,7 @@ def _drop_running_lines(pages: list[list[_Row]], sizes: list[tuple[float, float]
 
 
 # --- reading order ---------------------------------------------------------------------------
+
 
 def _is_two_column(rows: list[_Row], width: float, body: float) -> bool:
     body_rows = [r for r in rows if abs(r.size - body) < 0.6]
@@ -231,14 +242,24 @@ def _merge_rows(rows: list[_Row]) -> list[_Row]:
             sep = " " if r.x0 > prev.x1 + 0.15 * r.size else ""
             text = prev.text + sep + r.text
             dominant = prev if len(prev.text) >= len(r.text) else r
-            merged[-1] = _Row(prev.page, text, dominant.size, prev.bold and r.bold,
-                              prev.x0, min(prev.y0, r.y0), max(prev.x1, r.x1), max(prev.y1, r.y1), prev.column)
+            merged[-1] = _Row(
+                prev.page,
+                text,
+                dominant.size,
+                prev.bold and r.bold,
+                prev.x0,
+                min(prev.y0, r.y0),
+                max(prev.x1, r.x1),
+                max(prev.y1, r.y1),
+                prev.column,
+            )
         else:
             merged.append(r)
     return merged
 
 
 # --- blocks ----------------------------------------------------------------------------------
+
 
 def _heading_sizes(rows: list[_Row], body: float) -> list[float]:
     """Distinct heading font sizes, largest first; their position + 1 is the heading level."""
@@ -280,7 +301,8 @@ def _build_blocks(pages: list[list[_Row]], body: float, heading_sizes: list[floa
             prev = rows[i - 1] if i > 0 else None
             indented = row.x0 - column_left[row.column] > 0.8 * body
             bullet = _GLYPH_BULLET.match(row.text) is not None or (
-                _NUMBER_BULLET.match(row.text) is not None and not indented
+                _NUMBER_BULLET.match(row.text) is not None
+                and not indented
                 and (current is None or current.kind == "list_item" or current.last.text.endswith(_SENTENCE_END))
             )
             if bullet:
@@ -296,8 +318,9 @@ def _build_blocks(pages: list[list[_Row]], body: float, heading_sizes: list[floa
     return blocks
 
 
-def _continues(block: _Block, row: _Row, prev: _Row | None, style: tuple[int, bool],
-               indented: bool, body: float, normal_gap: float) -> bool:
+def _continues(
+    block: _Block, row: _Row, prev: _Row | None, style: tuple[int, bool], indented: bool, body: float, normal_gap: float
+) -> bool:
     if block.style != style:
         return False
     last = block.last

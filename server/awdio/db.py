@@ -109,8 +109,17 @@ class Database:
         with self._tx() as c:
             c.execute(
                 "INSERT INTO documents VALUES (?,?,?,?,?,?,?,?,?)",
-                (row.id, row.title, row.source_type, row.filename, row.word_count,
-                 row.block_count, row.page_count, row.created_at, row.last_opened_at),
+                (
+                    row.id,
+                    row.title,
+                    row.source_type,
+                    row.filename,
+                    row.word_count,
+                    row.block_count,
+                    row.page_count,
+                    row.created_at,
+                    row.last_opened_at,
+                ),
             )
 
     def get_document(self, doc_id: str) -> DocumentRow | None:
@@ -206,8 +215,9 @@ class Database:
         return r["s"] / r["w"] if r["w"] else None
 
     # audio cache index
-    def add_audio(self, key: str, doc_id: str | None, engine: str, voice: str,
-                  block_index: int | None, ext: str) -> None:
+    def add_audio(
+        self, key: str, doc_id: str | None, engine: str, voice: str, block_index: int | None, ext: str
+    ) -> None:
         with self._tx() as c:
             c.execute(
                 "INSERT OR REPLACE INTO audio_cache VALUES (?,?,?,?,?,?)",

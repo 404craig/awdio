@@ -10,53 +10,70 @@ from ebooklib import epub
 
 ALICE_TITLE = "Alice's Adventures in Wonderland"
 ALICE: list[tuple[str, list[str]]] = [
-    ("CHAPTER I. Down the Rabbit-Hole", [
-        "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: "
-        "once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations "
-        "in it, “and what is the use of a book,” thought Alice “without pictures or conversations?”",
-        "So she was considering in her own mind (as well as she could, for the hot day made her feel very sleepy "
-        "and stupid), whether the pleasure of making a daisy-chain would be worth the trouble of getting up and "
-        "picking the daisies, when suddenly a White Rabbit with pink eyes ran close by her.",
-        "There was nothing so very remarkable in that; nor did Alice think it so very much out of the way to hear "
-        "the Rabbit say to itself, “Oh dear! Oh dear! I shall be late!” (when she thought it over afterwards, it "
-        "occurred to her that she ought to have wondered at this, but at the time it all seemed quite natural); but "
-        "when the Rabbit actually took a watch out of its waistcoat-pocket, and looked at it, and then hurried on, "
-        "Alice started to her feet, for it flashed across her mind that she had never before seen a rabbit with "
-        "either a waistcoat-pocket, or a watch to take out of it, and burning with curiosity, she ran across the "
-        "field after it, and fortunately was just in time to see it pop down a large rabbit-hole under the hedge.",
-        "In another moment down went Alice after it, never once considering how in the world she was to get out again.",
-    ]),
-    ("CHAPTER II. The Pool of Tears", [
-        "“Curiouser and curiouser!” cried Alice (she was so much surprised, that for the moment she quite forgot how "
-        "to speak good English); “now I’m opening out like the largest telescope that ever was! Good-bye, feet!” "
-        "(for when she looked down at her feet, they seemed to be almost out of sight, they were getting so far off).",
-    ]),
-    ("CHAPTER III. A Caucus-Race and a Long Tale", [
-        "They were indeed a queer-looking party that assembled on the bank, and all of them were dripping wet, "
-        "cross, and uncomfortable.",
-    ]),
+    (
+        "CHAPTER I. Down the Rabbit-Hole",
+        [
+            "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: "
+            "once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations "
+            "in it, “and what is the use of a book,” thought Alice “without pictures or conversations?”",
+            "So she was considering in her own mind (as well as she could, for the hot day made her feel very sleepy "
+            "and stupid), whether the pleasure of making a daisy-chain would be worth the trouble of getting up and "
+            "picking the daisies, when suddenly a White Rabbit with pink eyes ran close by her.",
+            "There was nothing so very remarkable in that; nor did Alice think it so very much out of the way to hear "
+            "the Rabbit say to itself, “Oh dear! Oh dear! I shall be late!” (when she thought it over afterwards, it "
+            "occurred to her that she ought to have wondered at this, but at the time it all seemed quite natural); but "
+            "when the Rabbit actually took a watch out of its waistcoat-pocket, and looked at it, and then hurried on, "
+            "Alice started to her feet, for it flashed across her mind that she had never before seen a rabbit with "
+            "either a waistcoat-pocket, or a watch to take out of it, and burning with curiosity, she ran across the "
+            "field after it, and fortunately was just in time to see it pop down a large rabbit-hole under the hedge.",
+            "In another moment down went Alice after it, never once considering how in the world she was to get out again.",
+        ],
+    ),
+    (
+        "CHAPTER II. The Pool of Tears",
+        [
+            "“Curiouser and curiouser!” cried Alice (she was so much surprised, that for the moment she quite forgot how "
+            "to speak good English); “now I’m opening out like the largest telescope that ever was! Good-bye, feet!” "
+            "(for when she looked down at her feet, they seemed to be almost out of sight, they were getting so far off).",
+        ],
+    ),
+    (
+        "CHAPTER III. A Caucus-Race and a Long Tale",
+        [
+            "They were indeed a queer-looking party that assembled on the bank, and all of them were dripping wet, "
+            "cross, and uncomfortable.",
+        ],
+    ),
 ]
 ALICE_BULLETS = ["the birds with draggled feathers", "the animals with their fur clinging close to them"]
 
 PRIDE_TITLE = "Pride and Prejudice"
 PRIDE: list[tuple[str, list[str]]] = [
-    ("Chapter 1", [
-        "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in "
-        "want of a wife.",
-        "However little known the feelings or views of such a man may be on his first entering a neighbourhood, "
-        "this truth is so well fixed in the minds of the surrounding families, that he is considered the rightful "
-        "property of some one or other of their daughters.",
-        "“My dear Mr. Bennet,” said his lady to him one day, “have you heard that Netherfield Park is let at last?”",
-        "Mr. Bennet replied that he had not.",
-        "“But it is,” returned she; “for Mrs. Long has just been here, and she told me all about it.”",
-    ]),
-    ("Chapter 2", [
-        "Mr. Bennet was among the earliest of those who waited on Mr. Bingley. He had always intended to visit "
-        "him, though to the last always assuring his wife that he should not go; and till the evening after the "
-        "visit was paid she had no knowledge of it.",
-    ]),
+    (
+        "Chapter 1",
+        [
+            "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in "
+            "want of a wife.",
+            "However little known the feelings or views of such a man may be on his first entering a neighbourhood, "
+            "this truth is so well fixed in the minds of the surrounding families, that he is considered the rightful "
+            "property of some one or other of their daughters.",
+            "“My dear Mr. Bennet,” said his lady to him one day, “have you heard that Netherfield Park is let at last?”",
+            "Mr. Bennet replied that he had not.",
+            "“But it is,” returned she; “for Mrs. Long has just been here, and she told me all about it.”",
+        ],
+    ),
+    (
+        "Chapter 2",
+        [
+            "Mr. Bennet was among the earliest of those who waited on Mr. Bingley. He had always intended to visit "
+            "him, though to the last always assuring his wife that he should not go; and till the evening after the "
+            "visit was paid she had no knowledge of it.",
+        ],
+    ),
 ]
-PRIDE_QUOTE = "A lady's imagination is very rapid; it jumps from admiration to love, from love to matrimony in a moment."
+PRIDE_QUOTE = (
+    "A lady's imagination is very rapid; it jumps from admiration to love, from love to matrimony in a moment."
+)
 PRIDE_LIST = ["Jane", "Elizabeth", "Mary"]
 
 HYPHENATED_WORD = "conversations"  # broken across a line in the PDF fixture to test repair
@@ -68,6 +85,7 @@ def pride_paragraphs() -> list[str]:
 
 
 # --- PDF -------------------------------------------------------------------------------------
+
 
 def ascii_quotes(text: str) -> str:
     """The PDF fixture uses the built-in Helvetica, which cannot draw curly quotes."""
@@ -90,8 +108,16 @@ class _PdfWriter:
         self.page.insert_text((self.width / 2 - 5, self.height - 30), str(number), fontsize=8, fontname="helv")
         self.y = self.top
 
-    def text(self, text: str, size: float, font: str = "helv", *, gap_after: float = 9,
-             hyphenate: str | None = None, prefix: str = "") -> None:
+    def text(
+        self,
+        text: str,
+        size: float,
+        font: str = "helv",
+        *,
+        gap_after: float = 9,
+        hyphenate: str | None = None,
+        prefix: str = "",
+    ) -> None:
         if self.page is None:
             self.new_page()
         width = self.right - self.left - (12 if prefix else 0)
@@ -103,7 +129,7 @@ class _PdfWriter:
                 current = candidate
                 continue
             if hyphenate and word.strip('?,."') == hyphenate and current:
-                head, tail = word[: len(word) // 2], word[len(word) // 2:]
+                head, tail = word[: len(word) // 2], word[len(word) // 2 :]
                 lines.append(f"{current} {head}-")
                 current = tail
                 hyphenate = None
@@ -137,8 +163,12 @@ def make_pdf(path: Path) -> Path:
         if ci == len(ALICE) - 1:
             for item in ALICE_BULLETS:
                 w.text(item, 11, prefix="-", gap_after=4)
-    doc.set_page_labels([{"startpage": 0, "prefix": "", "style": "r", "firstpagenum": 1},
-                         {"startpage": 1, "prefix": "", "style": "D", "firstpagenum": 1}])
+    doc.set_page_labels(
+        [
+            {"startpage": 0, "prefix": "", "style": "r", "firstpagenum": 1},
+            {"startpage": 1, "prefix": "", "style": "D", "firstpagenum": 1},
+        ]
+    )
     doc.save(path)
     doc.close()
     return path
@@ -154,6 +184,7 @@ def make_blank_pdf(path: Path) -> Path:
 
 
 # --- DOCX / EPUB / TXT / MD ------------------------------------------------------------------
+
 
 def make_docx(path: Path) -> Path:
     d = docx.Document()

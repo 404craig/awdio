@@ -19,8 +19,13 @@ __all__ = ["NoTextError", "ParseError", "StructuredDocument", "detect_source_typ
 log = logging.getLogger(__name__)
 
 _EXTENSIONS: dict[str, SourceType] = {
-    ".pdf": "pdf", ".epub": "epub", ".docx": "docx",
-    ".txt": "txt", ".text": "txt", ".md": "md", ".markdown": "md",
+    ".pdf": "pdf",
+    ".epub": "epub",
+    ".docx": "docx",
+    ".txt": "txt",
+    ".text": "txt",
+    ".md": "md",
+    ".markdown": "md",
 }
 _MIME_TYPES: dict[str, SourceType] = {
     "application/pdf": "pdf",
@@ -31,7 +36,11 @@ _MIME_TYPES: dict[str, SourceType] = {
     "text/x-markdown": "md",
 }
 _PARSERS: dict[SourceType, Callable[[Path], ParsedDocument]] = {
-    "pdf": parse_pdf, "epub": parse_epub, "docx": parse_docx, "txt": parse_txt, "md": parse_md,
+    "pdf": parse_pdf,
+    "epub": parse_epub,
+    "docx": parse_docx,
+    "txt": parse_txt,
+    "md": parse_md,
 }
 
 
@@ -45,11 +54,21 @@ def detect_source_type(filename: str, content_type: str | None) -> SourceType | 
 
 
 def parse_document(path: Path, source_type: SourceType, filename: str) -> StructuredDocument:
+    """Parse and structure a file. Raises NoTextError, or ParseError for anything unreadable."""
     started = time.perf_counter()
-    document = finalize(_PARSERS[source_type](path), filename)
+    try:
+        document = finalize(_PARSERS[source_type](path), filename)
+    except ParseError:
+        raise
+    except Exception as exc:  # a heuristic tripping over an unusual file must not become a 500
+        log.exception("unexpected failure while parsing a %s file", source_type)
+        raise ParseError(f"could not analyse this {source_type.upper()} file") from exc
     log.info(
         "parsed %s: %d pages, %d blocks, %d words in %.2fs",
-        source_type, len(document.pages), document.block_count, document.word_count,
+        source_type,
+        len(document.pages),
+        document.block_count,
+        document.word_count,
         time.perf_counter() - started,
     )
     return document

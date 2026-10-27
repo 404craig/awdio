@@ -39,8 +39,10 @@ class FakeEngine:
         self.is_ready = True
 
     def voices(self) -> list[Voice]:
-        return [Voice("af_heart", "kokoro", "Heart", "American", "female", "A"),
-                Voice("bf_emma", "kokoro", "Emma", "British", "female", "B-")]
+        return [
+            Voice("af_heart", "kokoro", "Heart", "American", "female", "A"),
+            Voice("bf_emma", "kokoro", "Emma", "British", "female", "B-"),
+        ]
 
     def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthResult:
         self.calls.append((text, voice_id, context))
@@ -52,8 +54,9 @@ class FakeEngine:
         return SynthResult(audio, FAKE_RATE, timings)
 
 
-def assert_timings_valid(timings: list[tuple[float, float]] | list[list[float]], word_count: int,
-                         duration: float) -> None:
+def assert_timings_valid(
+    timings: list[tuple[float, float]] | list[list[float]], word_count: int, duration: float
+) -> None:
     assert len(timings) == word_count
     previous_end = 0.0
     for start, end in timings:
@@ -94,10 +97,10 @@ def assert_document_invariants(doc: dict) -> None:
 def make_client(tmp_path: Path) -> Iterator[Callable[..., TestClient]]:
     clients: list[TestClient] = []
 
-    def factory(*, pin: str | None = None, engines: Callable[[SettingsStore], list[Engine]] | None = None,
-                warm: bool = False) -> TestClient:
-        config = Config(data_dir=tmp_path / "data", access_pin=pin, warm_engines=warm,
-                        web_dist=tmp_path / "no-dist")
+    def factory(
+        *, pin: str | None = None, engines: Callable[[SettingsStore], list[Engine]] | None = None, warm: bool = False
+    ) -> TestClient:
+        config = Config(data_dir=tmp_path / "data", access_pin=pin, warm_engines=warm, web_dist=tmp_path / "no-dist")
         fake = FakeEngine()
         app = create_app(config, engines or (lambda _settings: [fake]))
         client = TestClient(app)

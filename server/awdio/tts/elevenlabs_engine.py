@@ -85,8 +85,13 @@ class ElevenLabsEngine:
             body["previous_text"] = context.previous_text[-CONTEXT_CHARS:]
         if context.next_text:
             body["next_text"] = context.next_text[:CONTEXT_CHARS]
-        response = self._request("POST", f"/text-to-speech/{voice_id}/with-timestamps", creds.api_key,
-                                 json=body, params={"output_format": OUTPUT_FORMAT})
+        response = self._request(
+            "POST",
+            f"/text-to-speech/{voice_id}/with-timestamps",
+            creds.api_key,
+            json=body,
+            params={"output_format": OUTPUT_FORMAT},
+        )
         _raise_for_status(response)
         try:
             payload = response.json()
@@ -106,7 +111,9 @@ class ElevenLabsEngine:
             speech_end = len(audio) / MP3_DECODE_RATE
             return SynthResult(audio, MP3_DECODE_RATE, align_words(text, spans, speech_end))
         speech_end = max(mp3_duration_estimate(mp3), max((s.t1 for s in spans), default=0.0))
-        return SynthResult(np.zeros(0, dtype=np.float32), MP3_DECODE_RATE, align_words(text, spans, speech_end), mp3=mp3)
+        return SynthResult(
+            np.zeros(0, dtype=np.float32), MP3_DECODE_RATE, align_words(text, spans, speech_end), mp3=mp3
+        )
 
     def _request(self, method: str, path: str, api_key: str, **kwargs: object) -> httpx.Response:
         try:

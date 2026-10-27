@@ -45,8 +45,15 @@ def unlock(body: UnlockBody, request: Request, services: Services = Depends(get_
     if not gate.check(client, body.pin.strip()):
         raise ApiError(401, "wrong_pin", "that PIN is not right")
     response = Response(status_code=204)
-    response.set_cookie(COOKIE_NAME, gate.token, max_age=COOKIE_MAX_AGE, httponly=True, samesite="lax",
-                        secure=request.url.scheme == "https", path="/")
+    response.set_cookie(
+        COOKIE_NAME,
+        gate.token,
+        max_age=COOKIE_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+        path="/",
+    )
     return response
 
 

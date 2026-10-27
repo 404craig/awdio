@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+import warnings
 from typing import Any
 
 import numpy as np
@@ -82,8 +83,10 @@ class KokoroEngine:
         from loguru import logger as kokoro_logger
 
         kokoro_logger.disable("kokoro")  # its log lines can echo document text
-        model = self._model if self._model is not None else KModel(repo_id=REPO_ID).to("cpu").eval()
-        pipeline = KPipeline(lang_code=lang, repo_id=REPO_ID, model=model)
+        with warnings.catch_warnings():  # torch deprecation chatter from the model definition
+            warnings.simplefilter("ignore")
+            model = self._model if self._model is not None else KModel(repo_id=REPO_ID).to("cpu").eval()
+            pipeline = KPipeline(lang_code=lang, repo_id=REPO_ID, model=model)
         self._pipelines[lang] = pipeline
         self._model = model
         log.info("kokoro pipeline '%s' loaded in %.1fs", lang, time.perf_counter() - started)

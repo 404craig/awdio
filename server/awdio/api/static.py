@@ -37,6 +37,6 @@ def _hint() -> dict[str, Any]:
     return {
         "app": "awdio",
         "message": "The web app is not built. Run `make build` (or `cd web && npm run build`), "
-                   "or use the Vite dev server on http://localhost:5173.",
+        "or use the Vite dev server on http://localhost:5173.",
         "api": "/api/health",
     }

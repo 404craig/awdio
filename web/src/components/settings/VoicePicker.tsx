@@ -74,7 +74,7 @@ function EngineSection({ engine, previewing, onPreview }: SectionProps) {
           <h3 id={`engine-${engine.id}`} className="text-[15px] font-semibold">
             {engine.name}
           </h3>
-          <p className="mt-0.5 text-[13px] leading-snug text-muted">{engine.description}</p>
+          <p className="mt-0.5 text-pretty text-[13px] leading-snug text-muted">{engine.description}</p>
         </div>
         {engine.id === "kokoro" && !engine.ready && (
           <span className="pill mt-0.5 shrink-0 bg-ink/[0.06] normal-case tracking-normal text-muted">Loading model…</span>

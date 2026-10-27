@@ -44,12 +44,21 @@ export const pageOfOrdinal = (index: DocIndex, ordinal: number) => lastAtOrBefor
 
 export const positionAt = (index: DocIndex, ordinal: number): Position => ordinalToPosition(index.blocks, ordinal);
 
-/** "Page 12", or "Page 14 · 3 · 2" when the label differs from the plain page number. */
-export function pageName(page: Page): string {
-  const n = String(page.index + 1);
-  if (page.label === n || page.label === "") return `Page ${n}`;
-  if (/^\d+$/.test(page.label)) return `Page ${page.label}`;
-  return `Page ${n} · ${page.label}`;
+/** Synthetic labels look like "3 · 2" or "Ch. 3 · 2" (chapter · page within chapter). */
+const CHAPTER_LABEL = /^(?:ch\.?\s*)?(\d+)\s*·\s*\d+$/i;
+
+/** The page's printed number ("12", "xii") or its 1-based position for synthetic labels. */
+export function pageNumber(page: Page): string {
+  const label = page.label.trim();
+  return label && !CHAPTER_LABEL.test(label) ? label : String(page.index + 1);
+}
+
+export const pageName = (page: Page) => `Page ${pageNumber(page)}`;
+
+/** "Ch. 3" for synthetic chapter labels, otherwise null. */
+export function chapterOf(page: Page): string | null {
+  const m = CHAPTER_LABEL.exec(page.label.trim());
+  return m ? `Ch. ${m[1]}` : null;
 }
 
 /** First `n` words of a block with an ellipsis when truncated. */

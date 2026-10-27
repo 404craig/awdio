@@ -9,7 +9,15 @@ from typing import Protocol
 
 from ..parsing.base import Block
 from .base import Engine, EngineNotReady, SynthContext, UnknownVoice
-from .cache import PAD_AFTER_HEADING, PAD_AFTER_OTHER, AudioCache, CachedAudio, CacheOwner, block_cache_key, preview_cache_key
+from .cache import (
+    PAD_AFTER_HEADING,
+    PAD_AFTER_OTHER,
+    AudioCache,
+    CachedAudio,
+    CacheOwner,
+    block_cache_key,
+    preview_cache_key,
+)
 from .registry import EngineRegistry
 from .worker import Priority, SynthWorker
 
@@ -35,6 +43,7 @@ class SynthesisService:
 
     def warm(self, engine: Engine) -> None:
         """Queue the engine's warm-up (idempotent while one is queued or running)."""
+
         def run() -> None:
             started = time.perf_counter()
             try:
@@ -51,8 +60,9 @@ class SynthesisService:
         if voice_id not in {v.id for v in engine.voices()}:
             raise UnknownVoice(voice_id)
 
-    def block_audio(self, doc: BlockSource, block_index: int, engine_id: str, voice_id: str,
-                    priority: Priority) -> Future[CachedAudio]:
+    def block_audio(
+        self, doc: BlockSource, block_index: int, engine_id: str, voice_id: str, priority: Priority
+    ) -> Future[CachedAudio]:
         """Cached audio for a block, or a future for its synthesis. Raises EngineNotReady/UnknownEngine."""
         engine = self.registry.get(engine_id)
         blocks = doc.blocks
@@ -82,9 +92,16 @@ class SynthesisService:
             result = engine.synthesize(block.text, voice_id, context=context)
             entry = self.cache.store(key, result, pad_seconds=pad, owner=owner)
             elapsed = time.perf_counter() - started
-            log.info("synthesised block %d (%d words) with %s/%s: %.2fs audio in %.2fs (RTF %.2f)",
-                     block_index, block.word_count, engine_id, voice_id, entry.duration_sec, elapsed,
-                     elapsed / entry.duration_sec if entry.duration_sec else 0.0)
+            log.info(
+                "synthesised block %d (%d words) with %s/%s: %.2fs audio in %.2fs (RTF %.2f)",
+                block_index,
+                block.word_count,
+                engine_id,
+                voice_id,
+                entry.duration_sec,
+                elapsed,
+                elapsed / entry.duration_sec if entry.duration_sec else 0.0,
+            )
             return entry
 
         return self.worker.submit(key, run, priority)

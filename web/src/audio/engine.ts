@@ -257,7 +257,7 @@ export class AudioEngine {
 
     if (!entry) {
       this.stopTick();
-      this.setBuffering("loading");
+      if (this.bufferingReason !== "voice") this.setBuffering("loading");
       if (this.attached !== blockIndex) this.el.pause();
       try {
         entry = await this.getEntry(blockIndex);

@@ -17,8 +17,12 @@ def parse(path: Path) -> StructuredDocument:
 
 
 def as_json(doc: StructuredDocument) -> dict:
-    return {"pages": [p.to_json() for p in doc.pages], "wordCount": doc.word_count,
-            "blockCount": doc.block_count, "pageCount": len(doc.pages)}
+    return {
+        "pages": [p.to_json() for p in doc.pages],
+        "wordCount": doc.word_count,
+        "blockCount": doc.block_count,
+        "pageCount": len(doc.pages),
+    }
 
 
 def kinds(doc: StructuredDocument) -> list[tuple[str, str]]:
@@ -85,7 +89,9 @@ def test_docx_styles(fixtures_dir: Path) -> None:
     blocks = doc.blocks
     assert (blocks[0].kind, blocks[0].text) == ("title", corpus.PRIDE_TITLE)
     assert [(b.text, b.level) for b in blocks if b.kind == "heading"] == [("Chapter 1", 1), ("Chapter 2", 1)]
-    assert [b.text for b in blocks if b.kind == "paragraph"][: len(corpus.pride_paragraphs())] == corpus.pride_paragraphs()
+    assert [b.text for b in blocks if b.kind == "paragraph"][
+        : len(corpus.pride_paragraphs())
+    ] == corpus.pride_paragraphs()
     assert [b.text for b in blocks if b.kind == "quote"] == [corpus.PRIDE_QUOTE]
     assert [b.text for b in blocks if b.kind == "list_item"] == corpus.PRIDE_LIST
     assert [b.text for b in blocks][-2:] == ["Longbourn", "Netherfield"]  # table cells, row by row
@@ -96,8 +102,9 @@ def test_epub_chapters_in_spine_order(fixtures_dir: Path) -> None:
     assert doc.title == corpus.PRIDE_TITLE  # package <dc:title>
     blocks = doc.blocks
     assert [(b.text, b.level) for b in blocks if b.kind == "heading"] == [("Chapter 1", 1), ("Chapter 2", 1)]
-    assert [b.text for b in blocks if b.kind == "paragraph" and b.text in corpus.pride_paragraphs()] == \
-        corpus.pride_paragraphs()
+    assert [
+        b.text for b in blocks if b.kind == "paragraph" and b.text in corpus.pride_paragraphs()
+    ] == corpus.pride_paragraphs()
     assert [b.text for b in blocks if b.kind == "quote"] == [corpus.PRIDE_QUOTE]
     assert [b.text for b in blocks if b.kind == "list_item"] == corpus.PRIDE_LIST
     assert "Kitty and Lydia" in [b.text for b in blocks]  # <br> becomes a space

@@ -60,8 +60,14 @@ def test_pages_without_chapters_use_plain_numbers() -> None:
 
 
 def test_finalize_drops_empty_blocks_and_numbers_words_globally() -> None:
-    blocks = [RawBlock("paragraph", "  "), RawBlock("paragraph", "one two"), RawBlock("paragraph", "\n"),
-              RawBlock("list_item", "three  four\nfive")]
+    blocks = [
+        RawBlock("paragraph", "  "),
+        RawBlock("paragraph", "one two"),
+        RawBlock("paragraph", "\n"),
+        RawBlock("list_item", "three  four\nfive"),
+    ]
     doc = finalize(ParsedDocument("txt", blocks), "x.txt")
     assert [(b.index, b.text, b.word_count, b.word_start) for b in doc.blocks] == [
-        (0, "one two", 2, 0), (1, "three four five", 3, 2)]
+        (0, "one two", 2, 0),
+        (1, "three four five", 3, 2),
+    ]

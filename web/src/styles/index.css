@@ -15,7 +15,7 @@
   --word-active: rgb(232 89 12 / 0.22);
   --word-scrub: rgb(232 89 12 / 0.34);
   --block-active: rgb(232 89 12 / 0.045);
-  --glass: rgb(255 255 255 / 0.78);
+  --glass: rgb(255 255 255 / 0.9);
   color-scheme: light;
 }
 
@@ -27,10 +27,10 @@
   --c-hairline: 42 42 42;
   --c-accent: 240 106 34;
   --c-on-accent: 255 255 255;
-  --word-active: rgb(240 106 34 / 0.30);
-  --word-scrub: rgb(240 106 34 / 0.45);
+  --word-active: rgb(240 106 34 / 0.38);
+  --word-scrub: rgb(240 106 34 / 0.52);
   --block-active: rgb(255 255 255 / 0.035);
-  --glass: rgb(28 28 30 / 0.78);
+  --glass: rgb(28 28 30 / 0.9);
   color-scheme: dark;
 }
 
@@ -45,7 +45,7 @@
   --word-active: rgb(214 80 10 / 0.22);
   --word-scrub: rgb(214 80 10 / 0.34);
   --block-active: rgb(120 80 20 / 0.05);
-  --glass: rgb(251 244 228 / 0.8);
+  --glass: rgb(251 244 228 / 0.92);
   color-scheme: light;
 }
 
@@ -96,7 +96,7 @@
     @apply inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors duration-150 ease-out;
   }
   .btn-primary {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent shadow-sm transition duration-150 ease-out hover:brightness-105 active:scale-[0.98];
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent shadow-sm transition duration-150 ease-out hover:brightness-105 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45;
   }
   .btn-secondary {
     @apply inline-flex h-11 items-center justify-center gap-2 rounded-full border border-hairline bg-surface px-5 text-[15px] font-medium text-ink transition duration-150 ease-out hover:bg-ink/[0.03] active:scale-[0.98];
@@ -309,4 +309,23 @@
 }
 .range:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 3px rgb(var(--c-accent) / 0.45);
+}
+
+/* Pages contain their children's margins so measured heights match placeholders. */
+[data-page] {
+  display: flow-root;
+}
+
+/* ---- Library covers: a quiet typographic tile tinted from the title ---- */
+.cover {
+  background: linear-gradient(160deg, hsl(var(--h) 46% 91%), hsl(var(--h) 38% 84%));
+  color: hsl(var(--h) 38% 28%);
+}
+[data-theme="dark"] .cover {
+  background: linear-gradient(160deg, hsl(var(--h) 18% 24%), hsl(var(--h) 16% 18%));
+  color: hsl(var(--h) 45% 80%);
+}
+[data-theme="sepia"] .cover {
+  background: linear-gradient(160deg, hsl(var(--h) 40% 86%), hsl(var(--h) 34% 79%));
+  color: hsl(var(--h) 40% 24%);
 }

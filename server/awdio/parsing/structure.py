@@ -17,8 +17,31 @@ _LINE_HYPHEN_LOWER = re.compile(r"\b([A-Za-z][a-z]*)-[ \t]*\n\s*([a-z]+)\b")
 _LINE_HYPHEN_OTHER = re.compile(r"(\w)-[ \t]*\n\s*(?=\w)")
 _WHITESPACE = re.compile(r"\s+")
 _HEADING_WORDS = re.compile(r"^(chapter|part|book|section|prologue|epilogue|appendix)\b", re.IGNORECASE)
-_SMALL_WORDS = {"a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into", "nor", "of",
-                "on", "or", "the", "to", "with", "vs", "via", "over", "up", "upon"}
+_SMALL_WORDS = {
+    "a",
+    "an",
+    "and",
+    "as",
+    "at",
+    "but",
+    "by",
+    "for",
+    "from",
+    "in",
+    "into",
+    "nor",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "with",
+    "vs",
+    "via",
+    "over",
+    "up",
+    "upon",
+}
 
 
 def normalize_text(raw: str) -> str:

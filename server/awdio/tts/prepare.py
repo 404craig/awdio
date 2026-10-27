@@ -83,7 +83,11 @@ class PrepareManager:
     def status(self, doc_id: str, engine: str, voice_id: str, total: int) -> PrepareStatus:
         with self._lock:
             job = self._jobs.get(doc_id)
-            if job is not None and (job.engine, job.voice_id) == (engine, voice_id) and job.status in ("running", "error"):
+            if (
+                job is not None
+                and (job.engine, job.voice_id) == (engine, voice_id)
+                and job.status in ("running", "error")
+            ):
                 return job.snapshot()
         done = min(self._db.cached_block_count(doc_id, engine, voice_id), total)
         return PrepareStatus("done" if done >= total else "idle", done, total, engine, voice_id)
@@ -122,8 +126,13 @@ class PrepareManager:
                 future.result()
                 job.done += 1
             job.status = "done"
-            log.info("prepared %d blocks with %s/%s in %.1fs", job.total, job.engine, job.voice_id,
-                     time.perf_counter() - started)
+            log.info(
+                "prepared %d blocks with %s/%s in %.1fs",
+                job.total,
+                job.engine,
+                job.voice_id,
+                time.perf_counter() - started,
+            )
         except Exception as exc:
             log.warning("prepare job failed: %s", type(exc).__name__)
             job.status, job.error = "error", str(exc) or type(exc).__name__

@@ -52,8 +52,11 @@ def token_spans(text: str, chunks: Iterable[TokenChunk]) -> list[TimedSpan]:
         for tok in chunk.tokens:
             end = pos + len(tok.text)
             if tok.start_ts is not None and tok.end_ts is not None and tok.text:
-                spans.append(TimedSpan(min(pos, len(text)), min(end, len(text)),
-                                       chunk.offset + tok.start_ts, chunk.offset + tok.end_ts))
+                spans.append(
+                    TimedSpan(
+                        min(pos, len(text)), min(end, len(text)), chunk.offset + tok.start_ts, chunk.offset + tok.end_ts
+                    )
+                )
             pos = end + len(tok.whitespace)
         cursor = max(cursor, start + len(chunk.graphemes))
     return spans
@@ -98,7 +101,9 @@ def align_words(text: str, spans: Sequence[TimedSpan], speech_end: float) -> lis
     return _monotonic(filled, speech_end)
 
 
-def _interpolate(timed: list[tuple[float, float] | None], lengths: list[int], speech_end: float) -> list[tuple[float, float]]:
+def _interpolate(
+    timed: list[tuple[float, float] | None], lengths: list[int], speech_end: float
+) -> list[tuple[float, float]]:
     out: list[tuple[float, float]] = []
     i = 0
     while i < len(timed):

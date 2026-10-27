@@ -32,7 +32,9 @@ def parse_txt(path: Path) -> ParsedDocument:
         joined = normalize_text("\n".join(lines))
         if len(lines) == 1 and (level := fallback_heading_level(joined)) is not None:
             blocks.append(RawBlock("heading", joined, level=level))
-        elif len(lines) == 2 and is_chapter_line(lines[0]) and len(joined.split(" ")) <= 12:  # "CHAPTER I." / "Down the Rabbit-Hole"
+        elif (
+            len(lines) == 2 and is_chapter_line(lines[0]) and len(joined.split(" ")) <= 12
+        ):  # "CHAPTER I." / "Down the Rabbit-Hole"
             blocks.append(RawBlock("heading", joined, level=1))
         else:
             blocks.append(RawBlock("paragraph", "\n".join(lines)))
@@ -106,8 +108,9 @@ def parse_md(path: Path) -> ParsedDocument:
             continue
         nxt = lines[i + 1] if i + 1 < len(lines) else ""
         if buf_kind == "paragraph" and not buf and _SETEXT.match(nxt) and not _LIST.match(line):
-            blocks.append(RawBlock("heading", strip_inline_markdown(line.strip()),
-                                   level=1 if nxt.strip().startswith("=") else 2))
+            blocks.append(
+                RawBlock("heading", strip_inline_markdown(line.strip()), level=1 if nxt.strip().startswith("=") else 2)
+            )
             continue
         if _SETEXT.match(line) and blocks and blocks[-1].kind == "heading" and not buf:
             continue  # the underline of a setext heading
@@ -143,5 +146,5 @@ def _skip_front_matter(lines: list[str]) -> list[str]:
     if lines and lines[0].strip() == "---":
         for i in range(1, len(lines)):
             if lines[i].strip() in ("---", "..."):
-                return lines[i + 1:]
+                return lines[i + 1 :]
     return lines

@@ -60,8 +60,15 @@ def build_services(config: Config, engines: EngineFactory = default_engines) -> 
     synth = SynthesisService(registry, cache, worker)
     library = Library(config, db)
     return Services(
-        config=config, db=db, settings=settings, library=library, engines=registry, cache=cache, worker=worker,
-        synth=synth, prepare=PrepareManager(synth, db, library.load),
+        config=config,
+        db=db,
+        settings=settings,
+        library=library,
+        engines=registry,
+        cache=cache,
+        worker=worker,
+        synth=synth,
+        prepare=PrepareManager(synth, db, library.load),
         gate=PinGate(config.access_pin, settings.session_secret()),
     )
 

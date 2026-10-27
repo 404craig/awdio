@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 
 from ..errors import ApiError
 from ..services import Services, get_services
-from ..tts.base import EngineNotConfigured, EngineNotReady
+from ..tts.base import EngineNotConfigured
 from ..tts.kokoro_voices import DEFAULT_KOKORO_VOICE
 from ..tts.worker import Priority
 from .documents import document_row
@@ -42,21 +42,23 @@ async def resolve_voice(services: Services, engine: str | None, voice: str | Non
 
 
 @router.get("/api/documents/{doc_id}/blocks/{block_index}/audio")
-async def block_audio(doc_id: str, block_index: int, engine: str | None = None, voice: str | None = None,
-                      prefetch: bool = False, services: Services = Depends(get_services)) -> dict[str, Any]:
+async def block_audio(
+    doc_id: str,
+    block_index: int,
+    engine: str | None = None,
+    voice: str | None = None,
+    prefetch: bool = False,
+    services: Services = Depends(get_services),
+) -> dict[str, Any]:
     row = document_row(services, doc_id)
     if not 0 <= block_index < row.block_count:
         raise ApiError(404, "block_not_found", f"block index must be 0..{row.block_count - 1}")
     engine_id, voice_id = await resolve_voice(services, engine, voice)
     doc = await run_in_threadpool(services.library.load, doc_id)
     with engine_errors():
-        future = services.synth.block_audio(doc, block_index, engine_id, voice_id,
-                                            Priority.PREFETCH if prefetch else Priority.ON_DEMAND)
-        if not prefetch and block_index + 1 < row.block_count:
-            try:
-                services.synth.block_audio(doc, block_index + 1, engine_id, voice_id, Priority.PREFETCH)
-            except EngineNotReady:
-                pass
+        future = services.synth.block_audio(
+            doc, block_index, engine_id, voice_id, Priority.PREFETCH if prefetch else Priority.ON_DEMAND
+        )
         entry = await asyncio.wrap_future(future)
     return {
         "blockIndex": block_index,
@@ -80,8 +82,9 @@ def audio_file(key: str, ext: str, services: Services = Depends(get_services)) -
 
 
 @router.post("/api/documents/{doc_id}/prepare", status_code=202)
-async def start_prepare(doc_id: str, engine: str | None = None, voice: str | None = None,
-                        services: Services = Depends(get_services)) -> dict[str, Any]:
+async def start_prepare(
+    doc_id: str, engine: str | None = None, voice: str | None = None, services: Services = Depends(get_services)
+) -> dict[str, Any]:
     document_row(services, doc_id)
     engine_id, voice_id = await resolve_voice(services, engine, voice)
     status = await run_in_threadpool(services.prepare.start, doc_id, engine_id, voice_id)
@@ -89,8 +92,9 @@ async def start_prepare(doc_id: str, engine: str | None = None, voice: str | Non
 
 
 @router.get("/api/documents/{doc_id}/prepare")
-async def prepare_status(doc_id: str, engine: str | None = None, voice: str | None = None,
-                         services: Services = Depends(get_services)) -> dict[str, Any]:
+async def prepare_status(
+    doc_id: str, engine: str | None = None, voice: str | None = None, services: Services = Depends(get_services)
+) -> dict[str, Any]:
     row = document_row(services, doc_id)
     engine_id, voice_id = await resolve_voice(services, engine, voice)
     return services.prepare.status(doc_id, engine_id, voice_id, row.block_count).to_json()

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import shutil
 import threading
 import uuid
@@ -58,9 +57,15 @@ class Library:
             raise
         self._write_structure(doc_id, parsed)
         row = DocumentRow(
-            id=doc_id, title=parsed.title, source_type=source_type, filename=filename,
-            word_count=parsed.word_count, block_count=parsed.block_count, page_count=len(parsed.pages),
-            created_at=utc_now(), last_opened_at=None,
+            id=doc_id,
+            title=parsed.title,
+            source_type=source_type,
+            filename=filename,
+            word_count=parsed.word_count,
+            block_count=parsed.block_count,
+            page_count=len(parsed.pages),
+            created_at=utc_now(),
+            last_opened_at=None,
         )
         self._db.insert_document(row)
         return row
@@ -72,9 +77,14 @@ class Library:
                 return self._memory[doc_id]
         data = json.loads((self._config.docs_dir / doc_id / "document.json").read_text())
         pages = [
-            Page(p["index"], p["label"], [
-                Block(b["index"], b["kind"], b["level"], b["text"], b["wordCount"], b["wordStart"]) for b in p["blocks"]
-            ])
+            Page(
+                p["index"],
+                p["label"],
+                [
+                    Block(b["index"], b["kind"], b["level"], b["text"], b["wordCount"], b["wordStart"])
+                    for b in p["blocks"]
+                ],
+            )
             for p in data["pages"]
         ]
         doc = LoadedDocument(doc_id, data["sourceType"], pages)
