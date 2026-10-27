@@ -77,17 +77,11 @@ class AudioCache:
         return entry if self.file_path(key, entry.format).exists() else None
 
     def store(self, key: str, result: SynthResult, *, pad_seconds: float, owner: CacheOwner) -> CachedAudio:
-        if result.mp3 is not None:
-            fmt = "mp3"
-            speech_end = result.word_timings[-1][1] if result.word_timings else 0.0
-            duration = speech_end
-            self._write_atomic(key, fmt, lambda p: p.write_bytes(result.mp3 or b""))
-        else:
-            audio = pad_silence(result.audio, result.sample_rate, pad_seconds)
-            duration = len(audio) / result.sample_rate
-            fmt = self._format
-            writer = write_mp3 if fmt == "mp3" else write_wav
-            self._write_atomic(key, fmt, lambda p: writer(p, audio, result.sample_rate))
+        audio = pad_silence(result.audio, result.sample_rate, pad_seconds)
+        duration = len(audio) / result.sample_rate
+        fmt = self._format
+        writer = write_mp3 if fmt == "mp3" else write_wav
+        self._write_atomic(key, fmt, lambda p: writer(p, audio, result.sample_rate))
 
         timings = [(round(min(s, duration), 3), round(min(e, duration), 3)) for s, e in result.word_timings]
         entry = CachedAudio(key, fmt, round(duration, 3), timings)

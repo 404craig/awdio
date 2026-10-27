@@ -20,7 +20,6 @@ class Config:
     data_dir: Path
     access_pin: str | None = None
     audio_format: AudioFormat = "wav"
-    elevenlabs_api_key_seed: str | None = None
     web_dist: Path = _REPO_ROOT / "web" / "dist"
     host: str = "127.0.0.1"
     port: int = 8000
@@ -41,7 +40,6 @@ class Config:
             data_dir=Path(os.environ.get("AWDIO_DATA_DIR", "./data")).resolve(),
             access_pin=pin,
             audio_format=fmt,  # type: ignore[arg-type]
-            elevenlabs_api_key_seed=os.environ.get("ELEVENLABS_API_KEY", "").strip() or None,
             web_dist=Path(web_dist).resolve() if web_dist else cls.web_dist,
             host=os.environ.get("AWDIO_HOST", "127.0.0.1"),
             port=int(os.environ.get("AWDIO_PORT", "8000")),

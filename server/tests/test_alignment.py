@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from awdio.tts.alignment import EngineToken, TimedSpan, TokenChunk, align_words, char_spans, token_spans
+from awdio.tts.alignment import EngineToken, TimedSpan, TokenChunk, align_words, token_spans
 
 from .conftest import assert_timings_valid
 
@@ -107,15 +107,3 @@ def test_overlapping_and_out_of_order_times_are_made_monotonic() -> None:
     timings = align_words(text, spans, speech_end=2.0)
     assert timings == [(0.5, 1.2), (1.2, 1.2), (1.2, 2.0)]
     assert_timings_valid(timings, 3, 2.0)
-
-
-def test_character_alignment_for_cloud_engine() -> None:
-    text = "Hi there, you."
-    chars = list(text)
-    starts = [i * 0.1 for i in range(len(chars))]
-    ends = [s + 0.1 for s in starts]
-    timings = align_words(text, char_spans(text, chars, starts, ends), speech_end=1.5)
-    assert timings[0] == pytest.approx((0.0, 0.2))
-    assert timings[1] == pytest.approx((0.3, 0.9))
-    assert timings[2] == pytest.approx((1.0, 1.5))
-    assert_timings_valid(timings, 3, 1.5)

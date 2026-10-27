@@ -29,7 +29,6 @@ def _engine_info(engine: Engine) -> dict[str, Any]:
         "id": engine.id,
         "name": engine.name,
         "ready": engine.ready(),
-        "configured": engine.configured(),
         "description": engine.description,
         "voices": voices,
     }

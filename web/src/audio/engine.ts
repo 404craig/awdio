@@ -56,6 +56,7 @@ type Target = { word: number } | { time: number };
 const CACHE_SIZE = 40;
 const PREFETCH_AHEAD = 3;
 const DEFAULT_SECONDS_PER_WORD = 0.38;
+const PRIOR_WORDS = 200;
 const RESTART_THRESHOLD_SEC = 2;
 const ARTWORK = [
   { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -125,9 +126,12 @@ export class AudioEngine {
     return this.wantPlay;
   }
 
-  /** Measured average seconds per word (at 1x) across synthesised blocks. */
+  /**
+   * Average seconds per word (at 1x): blocks measured so far, blended with the server's estimate as a prior
+   * worth PRIOR_WORDS words, so a few padded headings at the start don't double the time left.
+   */
   secondsPerWord(): number {
-    return this.measured.words > 0 ? this.measured.seconds / this.measured.words : this.fallbackSpw;
+    return (this.measured.seconds + this.fallbackSpw * PRIOR_WORDS) / (this.measured.words + PRIOR_WORDS);
   }
 
   load(doc: EngineDocument, opts: { voice: Voice; rate: number; start: Position; secondsPerWord?: number }): void {

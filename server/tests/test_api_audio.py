@@ -1,22 +1,14 @@
 from __future__ import annotations
 
-import base64
 import io
-import json
 import time
 import wave
 from collections.abc import Callable
 from pathlib import Path
 
-import httpx
-import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from awdio.config import ffmpeg_available
-from awdio.settings import SettingsStore
-from awdio.tts.audio_io import write_mp3
-from awdio.tts.elevenlabs_engine import API_BASE, ElevenLabsEngine
 
 from .conftest import FAKE_SECONDS_PER_WORD, FakeEngine, assert_timings_valid, upload
 
@@ -133,55 +125,3 @@ def test_voices_and_preview(client: TestClient) -> None:
     preview = client.get("/api/voices/kokoro/bf_emma/preview")
     assert preview.status_code == 200 and preview.headers["content-type"] == "audio/wav"
     assert client.get("/api/voices/kokoro/nobody/preview").status_code == 400
-
-
-@pytest.mark.skipif(not ffmpeg_available(), reason="needs ffmpeg")
-def test_elevenlabs_block_audio(make_client: Callable[..., TestClient], fixtures_dir: Path, tmp_path: Path) -> None:
-    mp3_path = tmp_path / "speech.mp3"
-    write_mp3(mp3_path, np.zeros(44100, dtype=np.float32), 44100)
-    requests: list[dict] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path.endswith("/voices"):
-            return httpx.Response(200, json={"voices": [{"voice_id": "el_rachel", "name": "Rachel", "labels": {}}]})
-        payload = json.loads(request.content)
-        requests.append(payload)
-        if "fail" in payload["text"]:
-            return httpx.Response(500, json={"detail": {"message": "server exploded"}})
-        chars = list(payload["text"])
-        step = 0.9 / len(chars)
-        return httpx.Response(
-            200,
-            json={
-                "audio_base64": base64.b64encode(mp3_path.read_bytes()).decode(),
-                "alignment": {
-                    "characters": chars,
-                    "character_start_times_seconds": [i * step for i in range(len(chars))],
-                    "character_end_times_seconds": [(i + 1) * step for i in range(len(chars))],
-                },
-            },
-        )
-
-    def engines(settings: SettingsStore) -> list:
-        http = httpx.Client(base_url=API_BASE, transport=httpx.MockTransport(handler))
-        return [FakeEngine(), ElevenLabsEngine(settings.elevenlabs_credentials, client=http)]
-
-    client = make_client(engines=engines)
-    assert client.put("/api/settings", json={"elevenLabsApiKey": "sk_any"}).status_code == 200
-    doc_id = upload(client, fixtures_dir / "pride.txt").json()["id"]
-    doc = client.get(f"/api/documents/{doc_id}").json()
-    block = blocks_of(doc)[3]
-    params = {"engine": "elevenlabs", "voice": "el_rachel", "prefetch": "true"}
-    audio = client.get(f"/api/documents/{doc_id}/blocks/3/audio", params=params).json()
-    assert audio["engine"] == "elevenlabs" and audio["durationSec"] == pytest.approx(1.15, abs=0.08)
-    assert_timings_valid(audio["timings"], block["wordCount"], audio["durationSec"])
-    assert requests[0]["previous_text"] == blocks_of(doc)[2]["text"]
-    assert requests[0]["next_text"] == blocks_of(doc)[4]["text"]
-    assert requests[0]["model_id"] == "eleven_multilingual_v2"
-
-    failing = tmp_path / "fail.txt"
-    failing.write_text("This request will fail.\n")
-    fail_id = upload(client, failing).json()["id"]
-    response = client.get(f"/api/documents/{fail_id}/blocks/0/audio", params=params)
-    assert response.status_code == 502
-    assert response.json()["error"] == {"code": "engine_error", "message": "ElevenLabs error 500: server exploded"}

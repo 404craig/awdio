@@ -62,23 +62,6 @@ def token_spans(text: str, chunks: Iterable[TokenChunk]) -> list[TimedSpan]:
     return spans
 
 
-def char_spans(text: str, characters: Sequence[str], starts: Sequence[float], ends: Sequence[float]) -> list[TimedSpan]:
-    """Walk a per-character alignment (ElevenLabs) against `text`; whitespace characters carry no timing."""
-    spans: list[TimedSpan] = []
-    pos = 0
-    for ch, t0, t1 in zip(characters, starts, ends, strict=False):
-        if not ch or ch.isspace():
-            if pos < len(text) and text[pos] == " ":
-                pos += 1
-            continue
-        found = text.find(ch, pos, pos + 8)
-        if found < 0:
-            continue
-        spans.append(TimedSpan(found, found + len(ch), t0, t1))
-        pos = found + len(ch)
-    return spans
-
-
 def align_words(text: str, spans: Sequence[TimedSpan], speech_end: float) -> list[tuple[float, float]]:
     """One (start, end) per word: min/max of overlapping timed spans, gaps interpolated by character length,
     then made monotonic and non-overlapping, clamped to [0, speech_end], with the last word ending at speech_end."""

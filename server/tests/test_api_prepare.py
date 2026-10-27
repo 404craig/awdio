@@ -81,15 +81,3 @@ def test_upload_auto_prepares_with_the_saved_local_voice(
     client.put("/api/settings", json={"voiceId": "bf_emma"})  # changing the voice starts nothing
     time.sleep(0.1)
     assert client.get(f"/api/documents/{doc_id}/prepare", params={"voice": "bf_emma"}).json()["status"] == "idle"
-
-
-def test_upload_never_auto_prepares_on_a_cloud_engine(
-    make_client: Callable[..., TestClient], fixtures_dir: Path
-) -> None:
-    fake = FakeEngine()
-    fake.local = False
-    client = make_client(auto_prepare=True, fake=fake)
-    summary = upload(client, fixtures_dir / "pride.txt").json()
-    assert summary["prepare"]["status"] == "idle"
-    time.sleep(0.1)
-    assert fake.calls == []

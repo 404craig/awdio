@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 from ..errors import ApiError
-from ..tts.base import EngineError, EngineNotConfigured, EngineNotReady, UnknownVoice
+from ..tts.base import EngineError, EngineNotReady, UnknownVoice
 from ..tts.cache import DocumentGone
 from ..tts.registry import UnknownEngine
 
@@ -19,8 +19,6 @@ def engine_errors() -> Iterator[None]:
         raise ApiError(400, "unknown_engine", f"unknown engine '{exc}'") from exc
     except UnknownVoice as exc:
         raise ApiError(400, "unknown_voice", f"unknown voice '{exc}'") from exc
-    except EngineNotConfigured as exc:
-        raise ApiError(400, "engine_not_configured", str(exc)) from exc
     except EngineNotReady as exc:
         raise ApiError(503, "engine_not_ready", "the voice model is still loading; try again shortly") from exc
     except EngineError as exc:

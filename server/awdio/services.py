@@ -14,7 +14,6 @@ from .library import Library
 from .settings import SettingsStore
 from .tts.base import Engine
 from .tts.cache import AudioCache
-from .tts.elevenlabs_engine import ElevenLabsEngine
 from .tts.kokoro_engine import KokoroEngine
 from .tts.prepare import PrepareManager
 from .tts.registry import EngineRegistry
@@ -45,16 +44,15 @@ EngineFactory = Callable[[SettingsStore], Sequence[Engine]]
 
 
 def default_engines(settings: SettingsStore) -> Sequence[Engine]:
-    return [KokoroEngine(), ElevenLabsEngine(settings.elevenlabs_credentials)]
+    return [KokoroEngine()]
 
 
 def build_services(config: Config, engines: EngineFactory = default_engines) -> Services:
     config.ensure_dirs()
     db = Database(config.db_path)
     settings = SettingsStore(db)
-    if config.elevenlabs_api_key_seed and not settings.api_key():
-        settings.set_api_key(config.elevenlabs_api_key_seed)
     registry = EngineRegistry(engines(settings))
+    settings.forget_unknown_engine({e.id for e in registry.all()})
     cache = AudioCache(config.audio_dir, db, config.audio_format)
     worker = SynthWorker()
     synth = SynthesisService(registry, cache, worker)

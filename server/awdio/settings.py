@@ -8,7 +8,6 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .db import Database
-from .tts.elevenlabs_engine import Credentials
 
 DEFAULTS: dict[str, Any] = {
     "engine": "kokoro",
@@ -18,9 +17,8 @@ DEFAULTS: dict[str, Any] = {
     "textSize": 19,
     "theme": "system",
     "autoScroll": True,
-    "elevenLabsModelId": "eleven_multilingual_v2",
 }
-_API_KEY = "elevenlabs_api_key"
+_REMOVED_KEYS = ("elevenlabs_api_key", "elevenLabsModelId")  # from installs that still had the cloud engine
 _SESSION_SECRET = "session_secret"
 
 
@@ -29,15 +27,13 @@ class SettingsUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    engine: Literal["kokoro", "elevenlabs"] | None = None
+    engine: str | None = Field(default=None, min_length=1, max_length=32)
     voiceId: str | None = Field(default=None, min_length=1, max_length=128)
     speed: float | None = Field(default=None, ge=0.5, le=3.0)
     font: Literal["serif", "sans"] | None = None
     textSize: int | None = Field(default=None, ge=15, le=26)
     theme: Literal["system", "light", "dark", "sepia"] | None = None
     autoScroll: bool | None = None
-    elevenLabsModelId: str | None = Field(default=None, min_length=1, max_length=128)
-    elevenLabsApiKey: str | None = Field(default=None, max_length=256)
 
     @field_validator("speed")
     @classmethod
@@ -51,21 +47,16 @@ class SettingsStore:
 
     def get(self) -> dict[str, Any]:
         stored = self._db.get_settings()
-        values = {k: stored.get(k, default) for k, default in DEFAULTS.items()}
-        values["elevenLabsConfigured"] = bool(stored.get(_API_KEY))
-        return values
+        return {k: stored.get(k, default) for k, default in DEFAULTS.items()}
 
     def update(self, values: dict[str, Any]) -> None:
         self._db.set_settings({k: v for k, v in values.items() if k in DEFAULTS})
 
-    def api_key(self) -> str | None:
-        return self._db.get_setting(_API_KEY) or None
-
-    def set_api_key(self, key: str | None) -> None:
-        self._db.set_settings({_API_KEY: key or None})
-
-    def elevenlabs_credentials(self) -> Credentials:
-        return Credentials(self.api_key(), self.get()["elevenLabsModelId"])
+    def forget_unknown_engine(self, engine_ids: set[str]) -> None:
+        """Drop settings left by engines that no longer exist (the saved voice falls back to the default)."""
+        self._db.set_settings(dict.fromkeys(_REMOVED_KEYS))
+        if self.get()["engine"] not in engine_ids:
+            self._db.set_settings({"engine": None, "voiceId": None})
 
     def session_secret(self) -> str:
         secret = self._db.get_setting(_SESSION_SECRET)

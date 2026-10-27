@@ -12,7 +12,6 @@ from fastapi.responses import FileResponse
 
 from ..errors import ApiError
 from ..services import Services, get_services
-from ..tts.base import EngineNotConfigured
 from ..tts.kokoro_voices import DEFAULT_KOKORO_VOICE
 from ..tts.worker import Priority
 from .documents import document_row
@@ -33,8 +32,6 @@ async def resolve_voice(services: Services, engine: str | None, voice: str | Non
     voice_id = voice or (settings["voiceId"] if engine_id == settings["engine"] else DEFAULT_VOICES.get(engine_id, ""))
     with engine_errors():
         instance = services.engines.get(engine_id)
-        if not instance.configured():
-            raise EngineNotConfigured(f"{instance.name} is not configured")
         if not voice_id:
             raise ApiError(400, "unknown_voice", "choose a voice for this engine")
         await run_in_threadpool(services.synth.check_voice, instance, voice_id)

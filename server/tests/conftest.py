@@ -26,7 +26,6 @@ class FakeEngine:
     id = "kokoro"
     name = "Fake Kokoro"
     description = "test engine"
-    local = True
 
     def __init__(self, *, ready: bool = True, sentence_delay: float = 0.0) -> None:
         self.is_ready = ready
@@ -36,9 +35,6 @@ class FakeEngine:
 
     def ready(self) -> bool:
         return self.is_ready
-
-    def configured(self) -> bool:
-        return True
 
     def warm(self) -> None:
         self.is_ready = True

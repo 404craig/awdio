@@ -112,15 +112,13 @@ async def upload_document(request: Request, services: Services = Depends(get_ser
 
 
 def _auto_prepare(services: Services, row: DocumentRow) -> None:
-    """Pre-synthesise a new document with the saved voice, but only on a local engine: uploading must never
-    spend cloud credits on its own (the client can still call prepare for ElevenLabs)."""
+    """Pre-synthesise a new document with the saved voice, in document order at the lowest priority."""
     settings = services.settings.get()
     try:
-        engine = services.engines.get(settings["engine"])
+        services.engines.get(settings["engine"])
     except UnknownEngine:
         return
-    if engine.local:
-        services.prepare.start(row.id, settings["engine"], settings["voiceId"])
+    services.prepare.start(row.id, settings["engine"], settings["voiceId"])
 
 
 async def _save_limited(upload: UploadFile, destination: Path) -> None:

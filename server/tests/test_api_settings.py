@@ -1,43 +1,12 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
+from pathlib import Path
 
-import httpx
 from fastapi.testclient import TestClient
 
-from awdio.settings import SettingsStore
-from awdio.tts.elevenlabs_engine import API_BASE, ElevenLabsEngine
-
-from .conftest import FakeEngine
-
-GOOD_KEY = "sk_good"
-VOICES = {
-    "voices": [
-        {"voice_id": "el_rachel", "name": "Rachel", "labels": {"accent": "american", "gender": "female"}},
-        {"voice_id": "el_mystery", "name": "Mystery", "labels": {}},
-    ]
-}
-
-
-def elevenlabs_transport(seen: list[httpx.Request]) -> httpx.MockTransport:
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen.append(request)
-        if request.headers.get("xi-api-key") != GOOD_KEY:
-            return httpx.Response(401, json={"detail": {"status": "invalid_api_key", "message": "Invalid API key"}})
-        if request.url.path.endswith("/voices"):
-            return httpx.Response(200, json=VOICES)
-        return httpx.Response(500, json={"detail": {"message": "boom"}})
-
-    return httpx.MockTransport(handler)
-
-
-def client_with_elevenlabs(make_client: Callable[..., TestClient], seen: list[httpx.Request]) -> TestClient:
-    def engines(settings: SettingsStore) -> list:
-        http = httpx.Client(base_url=API_BASE, transport=elevenlabs_transport(seen))
-        return [FakeEngine(), ElevenLabsEngine(settings.elevenlabs_credentials, client=http)]
-
-    return make_client(engines=engines)
+from awdio.config import Config
+from awdio.db import Database
 
 
 def test_defaults(client: TestClient) -> None:
@@ -49,8 +18,6 @@ def test_defaults(client: TestClient) -> None:
         "textSize": 19,
         "theme": "system",
         "autoScroll": True,
-        "elevenLabsConfigured": False,
-        "elevenLabsModelId": "eleven_multilingual_v2",
     }
 
 
@@ -69,32 +36,22 @@ def test_partial_update_and_validation(client: TestClient) -> None:
     assert client.put("/api/settings", json={"engine": "elevenlabs"}).json()["error"]["code"] == "unknown_engine"
 
 
-def test_elevenlabs_key_is_validated_stored_and_never_returned(make_client: Callable[..., TestClient]) -> None:
-    seen: list[httpx.Request] = []
-    client = client_with_elevenlabs(make_client, seen)
+def test_settings_left_by_a_removed_engine_fall_back_to_the_default_voice(
+    make_client: Callable[..., TestClient], tmp_path: Path
+) -> None:
+    data = tmp_path / "data"
+    Config(data_dir=data).ensure_dirs()
+    old = Database(data / "awdio.sqlite")
+    old.set_settings({"engine": "elevenlabs", "voiceId": "el_rachel", "elevenlabs_api_key": "sk_x", "speed": 1.5})
+    old.close()
+    client = make_client()
+    settings = client.get("/api/settings").json()
+    assert (settings["engine"], settings["voiceId"], settings["speed"]) == ("kokoro", "af_heart", 1.5)
+    assert set(settings) == {"engine", "voiceId", "speed", "font", "textSize", "theme", "autoScroll"}
 
-    rejected = client.put("/api/settings", json={"elevenLabsApiKey": "sk_bad"})
-    assert rejected.status_code == 400 and rejected.json()["error"]["code"] == "invalid_api_key"
-    assert client.put("/api/settings", json={"engine": "elevenlabs"}).json()["error"]["code"] == "engine_not_configured"
 
-    accepted = client.put("/api/settings", json={"elevenLabsApiKey": f"  {GOOD_KEY} "})
-    assert accepted.status_code == 200
-    assert accepted.json()["elevenLabsConfigured"] is True
-    assert GOOD_KEY not in json.dumps(accepted.json())
-    assert seen[-1].headers["xi-api-key"] == GOOD_KEY
-
-    switched = client.put("/api/settings", json={"engine": "elevenlabs"}).json()
-    assert (switched["engine"], switched["voiceId"]) == ("elevenlabs", "el_rachel")
-
-    engines = {e["id"]: e for e in client.get("/api/voices").json()["engines"]}
-    assert engines["elevenlabs"]["configured"] and engines["elevenlabs"]["ready"]
-    assert engines["elevenlabs"]["voices"] == [
-        {"id": "el_rachel", "engine": "elevenlabs", "name": "Rachel", "accent": "American", "gender": "female"},
-        {"id": "el_mystery", "engine": "elevenlabs", "name": "Mystery", "accent": "Unknown", "gender": "neutral"},
-    ]
-    health = client.get("/api/health").json()
-    assert health == {"status": "ok", "engines": [{"id": "kokoro", "ready": True}, {"id": "elevenlabs", "ready": True}]}
-
-    cleared = client.put("/api/settings", json={"elevenLabsApiKey": ""}).json()
-    assert cleared["elevenLabsConfigured"] is False
-    assert (cleared["engine"], cleared["voiceId"]) == ("kokoro", "af_heart")
+def test_voices_and_health_list_only_local_engines(client: TestClient) -> None:
+    engines = client.get("/api/voices").json()["engines"]
+    assert [e["id"] for e in engines] == ["kokoro"]
+    assert set(engines[0]) == {"id", "name", "ready", "description", "voices"}
+    assert client.get("/api/health").json() == {"status": "ok", "engines": [{"id": "kokoro", "ready": True}]}

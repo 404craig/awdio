@@ -29,6 +29,7 @@ The first start downloads the Kokoro-82M weights (~330 MB) into the Hugging Face
 | `AWDIO_AUDIO_FORMAT` | `wav` | `wav` (16-bit) or `mp3` (needs ffmpeg; falls back to wav with a warning) |
 | `ELEVENLABS_API_KEY` | unset | seeds the ElevenLabs key on first start (it can also be set in Settings) |
 | `AWDIO_AUTO_PREPARE` | `1` | after an upload, prepare all audio with the saved voice (local engines only; `0` disables) |
+| `AWDIO_TTS_THREADS` | cores − 1 (on ≥ 4 cores) | torch threads for Kokoro; one core is left free because torch slows down sharply when another process (e.g. the browser on the same machine) needs a core |
 | `AWDIO_WEB_DIST` | `../web/dist` | where the built frontend lives |
 | `AWDIO_HOST` / `AWDIO_PORT` | `127.0.0.1` / `8000` | used by `python -m awdio` |
 

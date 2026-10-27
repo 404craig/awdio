@@ -57,7 +57,7 @@ class SynthesisService:
         self.worker.submit(f"warm:{engine.id}", run, Priority.WARM)
 
     def check_voice(self, engine: Engine, voice_id: str) -> None:
-        """Raise UnknownVoice for voices the engine does not offer (may raise EngineError for cloud engines)."""
+        """Raise UnknownVoice for voices the engine does not offer."""
         if voice_id not in {v.id for v in engine.voices()}:
             raise UnknownVoice(voice_id)
 
