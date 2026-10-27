@@ -179,15 +179,46 @@ the word's start timestamp.
 ### Access PIN (`/unlock`) — only when `AWDIO_ACCESS_PIN` is set
 - Centered card, 4–8 digit PIN input, remembers device with a cookie.
 
-## 7. Visual design tokens (frontend starting point; refine, don't bloat)
+## 7. Brand & visual design tokens
 
-- Font: UI — Inter (self-hosted via @fontsource); reading — Literata.
-- Colours (light): background #FAFAF8, surface #FFFFFF, text #1A1A1A,
-  muted #6B6B6B, hairline #E8E6E1, accent #E8590C (ember), accent-soft
-  rgba(232,89,12,0.18). Dark: background #111111, surface #1C1C1E, text
-  #F2F2F2, muted #9A9A9A, hairline #2A2A2A. Sepia: background #F5ECD9,
-  surface #FBF4E4, text #3B2F1E.
-- Radii: 12 px cards, 16 px sheets, 999 px pills. Shadows: soft, low-alpha.
+Brand (see `docs/brand/moodboard.png` and `docs/brand/wordmark-original.png`):
+lowercase geometric wordmark "awdio" whose "w" is a wave; the wave "w" alone is
+the app mark. Tagline: "Sound, beautifully simple." Mood: near-black and warm
+ivory, brushed silver, one electric blue accent, lots of air, large soft
+radii, thin tracking-wide uppercase labels for metadata.
+
+Assets (vectorised from the supplied logo): `web/public/brand/wordmark.svg`
+(fill = currentColor, viewBox 2041×409) and `web/public/brand/mark.svg`
+(stroke = currentColor wave "w"). Use the wordmark SVG inline for the header
+(never set it in a font) and the mark for app icons, favicon, empty states and
+the loading state.
+
+- Fonts: UI — Outfit (geometric, echoes the wordmark; self-hosted via
+  @fontsource/outfit) for chrome, headings, buttons and labels; reading —
+  Literata (serif) with Inter as the sans option. Weights: Light 300, Regular
+  400, Medium 500, Semibold 600.
+- Colours
+  - Near Black `#111214`, Warm Ivory `#F3F1EB`, Brushed Silver `#B8BCC2`,
+    Electric Blue `#305CFF`.
+  - Light theme: background `#F3F1EB`, surface `#FBFAF7`, surface-2 `#ECEAE3`,
+    text `#111214`, muted `#6F7378`, hairline `#DEDCD5`, accent `#305CFF`,
+    accent-soft `rgba(48,92,255,0.16)`, on-accent `#F3F1EB`.
+  - Dark theme (the brand's primary mood): background `#111214`, surface
+    `#1A1B1E`, surface-2 `#232428`, text `#F3F1EB`, muted `#B8BCC2`, hairline
+    `#2C2D31`, accent `#305CFF` (use `#4A72FF` for text on dark for contrast),
+    accent-soft `rgba(74,114,255,0.22)`.
+  - Sepia theme: background `#F1E9D8`, surface `#F8F2E4`, text `#2F2A22`,
+    accent stays Electric Blue.
+  - Reading highlight: current word pill in accent-soft; current block tint at
+    4–5 % of the text colour. Never change font weight on highlight.
+- Primary buttons: Near Black on light (ivory text), Warm Ivory on dark
+  (near-black text). Electric Blue is reserved for the active/"live" state:
+  the play button while playing, the timeline progress, the current-word pill,
+  toggles, focus rings, selected items. Progress bars: accent on a silver track.
+- Radii: 14 px cards, 20 px sheets, 999 px pills. Shadows: very soft, 1–2 %
+  alpha, mostly rely on surface contrast. Hairlines over shadows.
+- Metadata labels: 11–12 px uppercase, letter-spacing 0.12em, muted (as on
+  the moodboard: "PREMIUM WIRELESS HEADPHONES").
 - Motion: 160–220 ms ease-out; respect `prefers-reduced-motion`.
 - Touch targets ≥ 44 px. Keyboard: Space play/pause, ←/→ 15 s, ↑/↓ paragraph,
   [ ] speed.
