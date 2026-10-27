@@ -37,3 +37,13 @@ def test_short_fragments_merge_into_a_neighbour() -> None:
         "Then she slept. The end.",
     ]
     assert split_sentences("Chapter One") == ["Chapter One"]
+
+
+def test_very_long_sentences_split_at_semicolons_and_colons_only() -> None:
+    clause = "and the rabbit ran on and on through the long grass"
+    text = f"It began quietly {clause}; then {clause}: finally {clause}, {clause}."
+    parts = split_sentences(text)
+    assert parts == [f"It began quietly {clause};", f"then {clause}:", f"finally {clause}, {clause}."]
+    assert " ".join(parts) == text
+    short = "She stopped; then she went on again."  # short sentences are never split at clauses
+    assert split_sentences(short) == [short]

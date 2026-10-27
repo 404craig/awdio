@@ -30,7 +30,8 @@ PARAGRAPH = (
     "of a wife. However little known the feelings or views of such a man may be on his first entering a "
     "neighbourhood, Dr. Smith paid £3.50 for 2 coffees!"
 )
-ALICE_57 = corpus.ALICE[0][1][0]  # the 57-word opening paragraph of Alice
+ALICE_57 = corpus.ALICE[0][1][0]  # Alice's 57-word opening paragraph: a single long sentence
+TEARS_57 = corpus.ALICE[1][1][0]  # the 57-word "Curiouser and curiouser!" paragraph: two sentences
 
 
 @pytest.mark.parametrize("voice", ["af_heart", "bf_emma"])
@@ -55,20 +56,37 @@ def test_real_kokoro_timings(voice: str) -> None:
     )
 
 
+def _step_times(engine: KokoroEngine, text: str) -> tuple[list[float], float]:
+    """Seconds from start at which each sentence finished, and the speech duration."""
+    steps = engine.synthesize(text, "af_heart", context=SynthContext(kind="paragraph"))
+    started = time.perf_counter()
+    marks: list[float] = []
+    while True:
+        try:
+            next(steps)
+        except StopIteration as done:
+            marks.append(time.perf_counter() - started)
+            result = done.value
+            break
+        marks.append(time.perf_counter() - started)
+    speech = len(result.audio) / SAMPLE_RATE
+    assert_timings_valid(result.word_timings, len(text.split(" ")), speech)
+    return marks, speech
+
+
 def test_sentence_steps_and_cached_block_duration(tmp_path: Path) -> None:
-    """A 57-word paragraph through the real worker/cache path: first sentence latency, wav length == duration."""
+    """57-word paragraphs: per-sentence latency, and through the real worker/cache, wav length == duration."""
     engine = KokoroEngine()
     engine.warm()
-    steps = engine.synthesize(ALICE_57, "af_heart", context=SynthContext(kind="paragraph"))
-    started = time.perf_counter()
-    next(steps)
-    first_sentence = time.perf_counter() - started
-    result = run_steps(steps)
-    total = time.perf_counter() - started
-    speech = len(result.audio) / SAMPLE_RATE
-    assert_timings_valid(result.word_timings, 57, speech)
+    for label, text in (("one sentence", ALICE_57), ("two sentences", TEARS_57)):
+        marks, speech = _step_times(engine, text)
+        assert len(marks) == len(split_sentences(text))
+        print(
+            f"\n[kokoro 57 words, {label}] sentence done at {', '.join(f'{m:.2f}s' for m in marks)} "
+            f"for {speech:.2f}s of speech (RTF {marks[-1] / speech:.3f})"
+        )
 
-    doc = LoadedDocument("doc", "txt", [Page(0, "1", [Block(0, "paragraph", None, ALICE_57, 57, 0)])])
+    doc = LoadedDocument("doc", "txt", [Page(0, "1", [Block(0, "paragraph", None, TEARS_57, 57, 0)])])
     db = Database(tmp_path / "db.sqlite")
     db.insert_document(DocumentRow("doc", "Alice", "txt", "alice.txt", 57, 1, 1, utc_now(), None))
     worker = SynthWorker()
@@ -81,10 +99,5 @@ def test_sentence_steps_and_cached_block_duration(tmp_path: Path) -> None:
     with wave.open(str(tmp_path / f"{entry.key}.wav")) as w:
         file_seconds = w.getnframes() / w.getframerate()
     assert file_seconds == pytest.approx(entry.duration_sec, abs=1e-3)
-    assert entry.timings[-1][1] <= entry.duration_sec
     assert entry.duration_sec == pytest.approx(entry.timings[-1][1] + PAD_AFTER_OTHER, abs=2e-3)
     assert_timings_valid(entry.timings, 57, entry.duration_sec)
-    print(
-        f"\n[kokoro 57 words] {len(split_sentences(ALICE_57))} sentences: first sentence in {first_sentence:.2f}s, "
-        f"whole block {total:.2f}s for {speech:.2f}s of speech (RTF {total / speech:.3f})"
-    )
