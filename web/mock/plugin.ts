@@ -51,7 +51,6 @@ function createState() {
     docs,
     progress,
     settings: defaultSettings(),
-    elevenKey: "",
     prepare: new Map<string, PrepareJob>(),
     synthesized: new Set<string>(),
     startedAt: Date.now(),
@@ -154,7 +153,7 @@ export function mockApi(): Plugin {
   };
 
   const voiceKnown = (engine: string, voice: string) =>
-    engines(true, s.settings.elevenLabsConfigured).some((e) => e.id === engine && e.voices.some((v) => v.id === voice));
+    engines(true).some((e) => e.id === engine && e.voices.some((v) => v.id === voice));
 
   const sessionOf = (req: Req) => /awdio_session=([^;]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "";
 
@@ -188,29 +187,21 @@ export function mockApi(): Plugin {
     if (env.pin && !s.unlocked.has(sessionOf(req))) return fail(res, 401, "locked", "Enter the access PIN"), true;
 
     if (a === "health") {
-      send(res, 200, { status: "ok", engines: [{ id: "kokoro", ready: kokoroReady() }, { id: "elevenlabs", ready: s.settings.elevenLabsConfigured }] });
+      send(res, 200, { status: "ok", engines: [{ id: "kokoro", ready: kokoroReady() }] });
       return true;
     }
 
     if (a === "settings") {
       if (method === "PUT") {
-        const body = (await readJson(req)) as Partial<Settings> & { elevenLabsApiKey?: string };
-        if (typeof body.elevenLabsApiKey === "string") {
-          if (body.elevenLabsApiKey && !body.elevenLabsApiKey.startsWith("sk_")) {
-            return fail(res, 400, "invalid_api_key", "ElevenLabs rejected that API key"), true;
-          }
-          s.elevenKey = body.elevenLabsApiKey;
-          s.settings.elevenLabsConfigured = !!s.elevenKey;
-        }
-        const { elevenLabsApiKey: _k, elevenLabsConfigured: _c, ...writable } = body;
-        s.settings = { ...s.settings, ...writable };
+        const body = (await readJson(req)) as Partial<Settings>;
+        s.settings = { ...s.settings, ...body };
       }
       send(res, 200, s.settings);
       return true;
     }
 
     if (a === "voices") {
-      if (!b) return send(res, 200, { engines: engines(kokoroReady(), s.settings.elevenLabsConfigured) }), true;
+      if (!b) return send(res, 200, { engines: engines(kokoroReady()) }), true;
       if (d === "preview") {
         await sleep(200);
         sendWav(res, silentWav(2.5));
@@ -300,10 +291,7 @@ export function mockApi(): Plugin {
     if (c === "blocks" && e === "audio") {
       const engine = query.get("engine") ?? "kokoro";
       const voiceId = query.get("voice") ?? "af_heart";
-      if (engine !== "kokoro" && engine !== "elevenlabs") return fail(res, 400, "unknown_engine", "Unknown engine"), true;
-      if (engine === "elevenlabs" && !s.settings.elevenLabsConfigured) {
-        return fail(res, 400, "engine_not_configured", "Add an ElevenLabs API key first"), true;
-      }
+      if (engine !== "kokoro") return fail(res, 400, "unknown_engine", "Unknown engine"), true;
       if (!voiceKnown(engine, voiceId)) return fail(res, 400, "unknown_voice", "Unknown voice"), true;
       if (engine === "kokoro" && !kokoroReady()) return fail(res, 503, "engine_not_ready", "The voice model is still loading"), true;
       const index = Number(d);

@@ -135,7 +135,6 @@ class KokoroEngine:
             pipeline = KPipeline(lang_code=lang, repo_id=REPO_ID, model=model)
         self._pipelines[lang] = pipeline
         self._model = model
-        log.info(
-            "kokoro pipeline '%s' loaded in %.1fs (%d threads)", lang, time.perf_counter() - started, torch.get_num_threads()
-        )
+        seconds = time.perf_counter() - started
+        log.info("kokoro pipeline '%s' loaded in %.1fs (%d threads)", lang, seconds, torch.get_num_threads())
         return pipeline

@@ -1,7 +1,8 @@
 /** Types mirroring docs/API.md (v1). Keep in sync with the server contract. */
 
 export type SourceType = "pdf" | "epub" | "docx" | "txt" | "md";
-export type EngineId = "kokoro" | "elevenlabs";
+/** Local TTS engines; only Kokoro for now (awdio is free-only, see docs/DECISIONS.md D1). */
+export type EngineId = "kokoro";
 export type BlockKind = "title" | "heading" | "paragraph" | "list_item" | "quote";
 
 export interface AppConfig {
@@ -88,7 +89,6 @@ export interface EngineInfo {
   id: EngineId;
   name: string;
   ready: boolean;
-  configured: boolean;
   description: string;
   voices: Voice[];
 }
@@ -104,14 +104,9 @@ export interface Settings {
   textSize: number;
   theme: Theme;
   autoScroll: boolean;
-  /** Read-only on the server: whether an ElevenLabs key is stored. */
-  elevenLabsConfigured: boolean;
-  elevenLabsModelId: string;
 }
 
-export type SettingsUpdate = Partial<
-  Pick<Settings, "engine" | "voiceId" | "speed" | "font" | "textSize" | "theme" | "autoScroll" | "elevenLabsModelId">
-> & { elevenLabsApiKey?: string };
+export type SettingsUpdate = Partial<Settings>;
 
 export interface ProgressUpdate {
   blockIndex: number;

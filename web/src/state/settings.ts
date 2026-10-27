@@ -11,8 +11,6 @@ export const DEFAULT_SETTINGS: Settings = {
   textSize: 19,
   theme: "system",
   autoScroll: true,
-  elevenLabsConfigured: false,
-  elevenLabsModelId: "eleven_multilingual_v2",
 };
 
 function cached(): Settings {
@@ -39,9 +37,7 @@ interface SettingsState {
   load(): Promise<void>;
   loadVoices(): Promise<void>;
   /** Optimistic: applies locally, then PUTs; reverts on failure. */
-  update(patch: Omit<SettingsUpdate, "elevenLabsApiKey">): Promise<void>;
-  /** Throws ApiError (e.g. invalid_api_key) for the caller to show inline. */
-  saveApiKey(key: string): Promise<void>;
+  update(patch: SettingsUpdate): Promise<void>;
 }
 
 export const useSettings = create<SettingsState>((set, get) => ({
@@ -84,13 +80,6 @@ export const useSettings = create<SettingsState>((set, get) => ({
       set({ settings: before });
       persist(before);
     }
-  },
-
-  async saveApiKey(key) {
-    const saved = await putSettings({ elevenLabsApiKey: key });
-    set({ settings: saved });
-    persist(saved);
-    await get().loadVoices();
   },
 }));
 

@@ -4,7 +4,6 @@ import { voicePreviewUrl, type EngineInfo, type Voice } from "../../api";
 import { player } from "../../state/reader";
 import { useSettings } from "../../state/settings";
 import { Mark } from "../brand/Mark";
-import { ElevenLabsKey } from "./ElevenLabsKey";
 
 const GENDER: Record<Voice["gender"], string> = { female: "Female", male: "Male", neutral: "Neutral" };
 
@@ -66,7 +65,6 @@ interface SectionProps {
 function EngineSection({ engine, previewing, onPreview }: SectionProps) {
   const current = useSettings((s) => s.settings);
   const update = useSettings((s) => s.update);
-  const saveApiKey = useSettings((s) => s.saveApiKey);
 
   return (
     <section aria-labelledby={`engine-${engine.id}`}>
@@ -77,79 +75,61 @@ function EngineSection({ engine, previewing, onPreview }: SectionProps) {
           </h3>
           <p className="mt-0.5 text-pretty text-[13px] leading-snug text-muted">{engine.description}</p>
         </div>
-        {engine.id === "kokoro" && !engine.ready && (
+        {!engine.ready && (
           <span className="label mt-1 flex shrink-0 items-center gap-1.5 text-accent-ink">
             <Mark animated className="h-2.5" /> Loading
           </span>
         )}
       </div>
 
-      {engine.id === "elevenlabs" && !engine.configured ? (
-        <ElevenLabsKey />
-      ) : (
-        <>
-          {engine.id === "elevenlabs" && (
-            <p className="mt-2 text-[13px] text-muted">
-              Voices are fetched from your account.{" "}
-              <button
-                type="button"
-                className="text-accent-ink hover:underline"
-                onClick={() => void saveApiKey("").catch(() => {})}
-              >
-                Remove key
-              </button>
-            </p>
-          )}
-          {groupByAccent(engine.voices).map(([accent, voices]) => (
-            <div key={accent} className="mt-3">
-              <div className="label mb-1.5">{accent}</div>
-              <ul role="radiogroup" aria-label={`${engine.name} · ${accent} voices`} className="overflow-hidden rounded-card border border-hairline">
-                {voices.map((v) => {
-                  const selected = current.engine === v.engine && current.voiceId === v.id;
-                  const key = `${v.engine}/${v.id}`;
-                  return (
-                    <li key={v.id} className="flex items-center border-b border-hairline last:border-b-0">
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        onClick={() => void update({ engine: v.engine, voiceId: v.id })}
-                        className="flex min-h-[52px] flex-1 items-center gap-3 pl-4 text-left transition-colors hover:bg-ink/[0.025]"
-                      >
-                        <span
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
-                            selected ? "border-accent bg-accent text-on-accent" : "border-ink/20"
-                          }`}
-                          aria-hidden
-                        >
-                          {selected && <Check size={13} strokeWidth={3} />}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-[15px] font-normal">{v.name}</span>
-                          <span className="block text-[12px] tracking-[0.01em] text-muted">
-                            {GENDER[v.gender]}
-                            {v.quality ? ` · Grade ${v.quality}` : ""}
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onPreview(v)}
-                        className="tap mr-1 text-muted hover:text-ink"
-                        aria-label={previewing === key ? `Stop preview of ${v.name}` : `Preview ${v.name}`}
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink/[0.06]">
-                          {previewing === key ? <Square size={12} fill="currentColor" /> : <Play size={13} fill="currentColor" className="ml-0.5" />}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </>
-      )}
+      {groupByAccent(engine.voices).map(([accent, voices]) => (
+        <div key={accent} className="mt-3">
+          <div className="label mb-1.5">{accent}</div>
+          <ul role="radiogroup" aria-label={`${engine.name} · ${accent} voices`} className="overflow-hidden rounded-card border border-hairline">
+            {voices.map((v) => {
+              const selected = current.engine === v.engine && current.voiceId === v.id;
+              const key = `${v.engine}/${v.id}`;
+              return (
+                <li key={v.id} className="flex items-center border-b border-hairline last:border-b-0">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => void update({ engine: v.engine, voiceId: v.id })}
+                    className="flex min-h-[52px] flex-1 items-center gap-3 pl-4 text-left transition-colors hover:bg-ink/[0.025]"
+                  >
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
+                        selected ? "border-accent bg-accent text-on-accent" : "border-ink/20"
+                      }`}
+                      aria-hidden
+                    >
+                      {selected && <Check size={13} strokeWidth={3} />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[15px] font-normal">{v.name}</span>
+                      <span className="block text-[12px] tracking-[0.01em] text-muted">
+                        {GENDER[v.gender]}
+                        {v.quality ? ` · Grade ${v.quality}` : ""}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onPreview(v)}
+                    className="tap mr-1 text-muted hover:text-ink"
+                    aria-label={previewing === key ? `Stop preview of ${v.name}` : `Preview ${v.name}`}
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink/[0.06]">
+                      {previewing === key ? <Square size={12} fill="currentColor" /> : <Play size={13} fill="currentColor" className="ml-0.5" />}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </section>
   );
 }

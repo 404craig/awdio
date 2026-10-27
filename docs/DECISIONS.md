@@ -6,12 +6,19 @@ Writing a state-of-the-art neural TTS model from scratch is not achievable in
 this project (it requires large curated speech corpora, weeks of GPU training
 and a research team to reach "human-like with proper emphasis"). awdio
 therefore *integrates* voice models through a small engine interface and ships
-two engines:
+one engine:
 
 | Engine | Where it runs | Cost | Quality | Word timestamps | Privacy |
 |---|---|---|---|---|---|
-| Kokoro-82M (`kokoro`) — default | locally, CPU | free, Apache-2.0 | very natural for its size; top of open-weights TTS leaderboards among small models; ~24 kHz | yes, native (duration predictor) | text never leaves the machine |
-| ElevenLabs (`elevenlabs`) — optional | cloud API | paid, user's own key | best-in-class expressiveness and emphasis | yes (`/with-timestamps` character alignment) | text is sent to ElevenLabs only when selected |
+| Kokoro-82M (`kokoro`) | locally, CPU | free, Apache-2.0 | very natural for its size; top of open-weights TTS leaderboards among small models; ~24 kHz | yes, native (duration predictor) | text never leaves the machine |
+
+**Free-only (user decision).** An optional ElevenLabs cloud engine (user's own
+API key, `/with-timestamps` alignment) was built first and then removed: the
+user chose to keep awdio free and fully local, so nothing ever costs money or
+leaves the machine. The engine interface and registry stay, so another *local*
+engine can be added later; the API keeps `engine`/`voiceId` (currently always
+`kokoro`). British Kokoro voices are listed first because the user is in the
+UK; `af_heart` stays the default as the highest-graded voice.
 
 Considered and rejected:
 - Browser Web Speech API: robotic, voice set depends on OS, word-boundary
@@ -22,12 +29,12 @@ Considered and rejected:
   sync would require a separate forced-alignment pass (whisper-timestamped
   or similar). Too heavy for a personal CPU box; good v2 candidates behind
   the same engine interface.
-- OpenAI `gpt-4o-mini-tts`: great steerability but no timestamps.
-- Azure Neural / Google Chirp: good, with word boundaries, but need cloud
-  project setup that is heavier than "paste an API key".
+- Cloud voices (ElevenLabs, OpenAI `gpt-4o-mini-tts`, Azure Neural, Google
+  Chirp): excellent, but paid and they send the text to a third party. Out of
+  scope since awdio is free-only (see above).
 
-The engine interface (`server/awdio/tts/base.py`) is deliberately tiny so any
-of the above can be added later.
+The engine interface (`server/awdio/tts/base.py`) is deliberately tiny so a
+local engine from the list above can be added later.
 
 ## D2 — No login; guest access only (optional access PIN)
 

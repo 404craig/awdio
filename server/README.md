@@ -6,7 +6,7 @@ built web app (`../web/dist`) from `/` in production.
 
 ## Setup and run
 
-Requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/). `ffmpeg` is optional (MP3 cache, ElevenLabs padding).
+Requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/). `ffmpeg` is optional (MP3 cache).
 
 ```sh
 cd server
@@ -27,7 +27,6 @@ The first start downloads the Kokoro-82M weights (~330 MB) into the Hugging Face
 | `AWDIO_DATA_DIR` | `./data` | uploads, parsed documents, audio cache, `awdio.sqlite` |
 | `AWDIO_ACCESS_PIN` | unset | 4–8 digits; when set, every `/api/*` route except config/unlock needs the unlock cookie |
 | `AWDIO_AUDIO_FORMAT` | `wav` | `wav` (16-bit) or `mp3` (needs ffmpeg; falls back to wav with a warning) |
-| `ELEVENLABS_API_KEY` | unset | seeds the ElevenLabs key on first start (it can also be set in Settings) |
 | `AWDIO_AUTO_PREPARE` | `1` | after an upload, prepare all audio with the saved voice (local engines only; `0` disables) |
 | `AWDIO_TTS_THREADS` | cores − 1 (on ≥ 4 cores) | torch threads for Kokoro; one core is left free because torch slows down sharply when another process (e.g. the browser on the same machine) needs a core |
 | `AWDIO_WEB_DIST` | `../web/dist` | where the built frontend lives |
@@ -41,12 +40,12 @@ awdio/
   services.py      the long-lived objects (db, settings, library, engines, cache, worker, prepare, PIN gate)
   config.py db.py  env config; sqlite (WAL) tables documents/progress/settings/synth_stats/audio_cache
   library.py       uploads → parser → data/docs/<id>/document.json (+ small in-memory LRU)
-  settings.py      user settings with defaults; the ElevenLabs key is stored here, never returned or logged
+  settings.py      user settings with defaults (settings left by the removed cloud engine are dropped on start)
   auth.py          optional PIN: HMAC session cookie (180 days), 5 wrong attempts → 60 s lockout
   api/             health, auth (config/unlock), documents, audio (+ prepare), voices, settings, static
   parsing/         pdf (PyMuPDF), epub (ebooklib+bs4), docx (python-docx), text (txt+md);
                    structure.py: normalisation, hyphenation repair, heading fallback, titles, paging
-  tts/             base.py engine protocol; kokoro_engine.py (local), elevenlabs_engine.py (cloud);
+  tts/             base.py engine protocol; kokoro_engine.py (the one engine; awdio is free-only);
                    alignment.py tokens/characters → word timings; sentences.py sentence splitter; worker.py
                    single synthesis thread with priorities and pre-emption; service.py cache-or-synthesise;
                    cache.py <key>.wav|mp3 + <key>.json; prepare.py whole-document background jobs
@@ -65,11 +64,10 @@ prefetch (`?prefetch=true`) > prepare. Kokoro synthesises a block sentence by se
 that keeps "Dr.", "3.50", initials and "U.S." intact and merges fragments under 4 words) and the worker checks
 between sentences whether more urgent work is waiting. If it is, the current job is parked, keeping the audio
 made so far, the urgent block runs, and the parked job resumes where it stopped. A seek therefore waits for at
-most one sentence of someone else's work plus the synthesis of its own block. ElevenLabs runs as one request
-per block (it needs the whole paragraph and its neighbours for prosody).
+most one sentence of someone else's work plus the synthesis of its own block.
 
-Uploads are prepared automatically in document order (cached blocks are skipped) when the saved engine is
-local; nothing is ever sent to ElevenLabs without the client asking. Changing the voice starts nothing.
+Uploads are prepared automatically in document order (cached blocks are skipped) with the saved voice.
+Changing the voice starts nothing.
 
 Cold start caveat: Kokoro on a 4-core CPU runs at roughly 0.45x real time (slower when the CPU is busy), and a
 block's audio is only returned once the whole block is done, so an uncached 57-word paragraph takes about 8 s.
@@ -79,4 +77,4 @@ than real time; auto-prepare hides the rest for freshly uploaded documents.
 Optional query parameter beyond the contract: `GET …/blocks/{i}/audio?prefetch=true` queues the request at
 prefetch priority, so a user's on-demand request (e.g. after a seek) is served before background prefetches.
 
-Nothing here logs document text or API keys; Kokoro's own logger is disabled for that reason.
+Nothing here logs document text; Kokoro's own logger is disabled for that reason.

@@ -166,11 +166,9 @@ export const defaultSettings = (): Settings => ({
   textSize: 19,
   theme: "system",
   autoScroll: true,
-  elevenLabsConfigured: false,
-  elevenLabsModelId: "eleven_multilingual_v2",
 });
 
-export function engines(kokoroReady: boolean, elevenConfigured: boolean): EngineInfo[] {
+export function engines(kokoroReady: boolean): EngineInfo[] {
   const k = (id: string, name: string, accent: string, gender: "female" | "male", quality: string) => ({
     id,
     engine: "kokoro" as const,
@@ -184,32 +182,18 @@ export function engines(kokoroReady: boolean, elevenConfigured: boolean): Engine
       id: "kokoro",
       name: "Kokoro (on this device)",
       ready: kokoroReady,
-      configured: true,
       description: "Private and free. Runs on your server; text never leaves it.",
       voices: [
+        k("bf_emma", "Emma", "British", "female", "B-"),
+        k("bf_isabella", "Isabella", "British", "female", "C"),
+        k("bm_fable", "Fable", "British", "male", "C"),
+        k("bm_george", "George", "British", "male", "C"),
         k("af_heart", "Heart", "American", "female", "A"),
         k("af_bella", "Bella", "American", "female", "A-"),
         k("af_nicole", "Nicole", "American", "female", "B-"),
-        k("am_michael", "Michael", "American", "male", "C+"),
         k("am_fenrir", "Fenrir", "American", "male", "C+"),
-        k("bf_emma", "Emma", "British", "female", "B-"),
-        k("bf_isabella", "Isabella", "British", "female", "C"),
-        k("bm_george", "George", "British", "male", "C"),
-        k("bm_fable", "Fable", "British", "male", "C"),
+        k("am_michael", "Michael", "American", "male", "C+"),
       ],
-    },
-    {
-      id: "elevenlabs",
-      name: "ElevenLabs (cloud)",
-      ready: elevenConfigured,
-      configured: elevenConfigured,
-      description: "Most expressive. Uses your own API key; text is sent to ElevenLabs.",
-      voices: elevenConfigured
-        ? [
-            { id: "21m00Tcm4TlvDq8ikWAM", engine: "elevenlabs", name: "Rachel", accent: "American", gender: "female" },
-            { id: "JBFqnCBsd6RMkjVDRZzb", engine: "elevenlabs", name: "George", accent: "British", gender: "male" },
-          ]
-        : [],
     },
   ];
 }

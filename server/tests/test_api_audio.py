@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-
 from .conftest import FAKE_SECONDS_PER_WORD, FakeEngine, assert_timings_valid, upload
 
 

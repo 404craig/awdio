@@ -5,11 +5,11 @@ awdio/
   server/                 Python 3.11+ (FastAPI, uvicorn), package `awdio`
     awdio/
       main.py             app factory, static serving of ../web/dist, lifespan (warm Kokoro)
-      config.py           env: AWDIO_DATA_DIR (default ./data), AWDIO_ACCESS_PIN, AWDIO_AUDIO_FORMAT (wav|mp3), ELEVENLABS_API_KEY (seed), AWDIO_HOST/PORT
+      config.py           env: AWDIO_DATA_DIR (default ./data), AWDIO_ACCESS_PIN, AWDIO_AUDIO_FORMAT (wav|mp3), AWDIO_TTS_THREADS, AWDIO_HOST/PORT
       db.py               sqlite3 (stdlib) schema + small repo functions
       api/                routers: documents, audio, voices, settings, auth, health
       parsing/            base.py (ParsedDocument builders), pdf.py, epub.py, docx.py, text.py, structure.py (shared heuristics, paging, tokenisation)
-      tts/                base.py (Engine protocol), kokoro_engine.py, elevenlabs_engine.py, cache.py, registry.py, prepare.py (background job), audio_io.py (wav/mp3 writing, silence padding)
+      tts/                base.py (Engine protocol), kokoro_engine.py, cache.py, registry.py, prepare.py (background job), audio_io.py (wav/mp3 writing, silence padding)
     tests/                pytest; fixtures generated at test time (PDF via PyMuPDF, DOCX via python-docx, EPUB via ebooklib) from public-domain text
     pyproject.toml        deps: fastapi, uvicorn[standard], python-multipart, pymupdf, python-docx, ebooklib, beautifulsoup4, lxml, kokoro, soundfile, numpy, httpx
   web/                    Vite + React 18 + TypeScript + Tailwind v3, zustand, react-router, lucide-react, @fontsource/inter, @fontsource/literata
@@ -103,7 +103,7 @@ class Engine(Protocol):
     def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthResult: ...
 ```
 `SynthContext` carries `kind` (block kind) and optional `previous_text` /
-`next_text` for engines that use them (ElevenLabs does).
+`next_text` for engines that use them (Kokoro does not).
 
 Kokoro engine
 - `KPipeline(lang_code=voice[0] == 'b' and 'b' or 'a', repo_id='hexgrad/Kokoro-82M')`,
@@ -124,20 +124,12 @@ Kokoro engine
 - Padding: append 0.5 s silence after title/heading blocks, 0.15 s after
   everything else.
 - Voices: ship the curated list (id, name, accent, gender, grade) for
-  American (af_*, am_*) and British (bf_*, bm_*) voices from the Kokoro
-  VOICES.md. Default `af_heart`.
-
-ElevenLabs engine
-- `POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/with-timestamps`
-  with `{ text, model_id, previous_text?, next_text?, output_format: "mp3_44100_128" }`;
-  header `xi-api-key`. Response `{ audio_base64, alignment: { characters[],
-  character_start_times_seconds[], character_end_times_seconds[] } }`.
-  Map characters to words by walking the character array against the
-  text (whitespace characters separate words). Decode mp3 via ffmpeg if
-  present else store mp3 as-is (the cache supports mp3) — prefer storing the
-  mp3 untouched and only adding padding when ffmpeg is available.
-- Voices from `GET /v1/voices` (cached 10 min). Key stored in `settings`
-  table (not logged, never returned).
+  British (bf_*, bm_*, listed first) and American (af_*, am_*) voices from the
+  Kokoro VOICES.md. Default `af_heart` (highest grade).
+- Weights and voices already in the Hugging Face cache are loaded from disk
+  without contacting the Hub (works offline); torch uses cores − 1 threads
+  (`AWDIO_TTS_THREADS`) because it slows down sharply when anything else
+  needs a core.
 
 ### Cache (`tts/cache.py`)
 - Key = sha1(f"{engine}|{voice}|{doc_id}|{block_index}|{text}")[:24].
@@ -149,7 +141,7 @@ ElevenLabs engine
 ```
 documents(id TEXT PK, title, source_type, filename, word_count, block_count, page_count, created_at, last_opened_at)
 progress(doc_id TEXT PK REFERENCES documents ON DELETE CASCADE, block_index, word_index, updated_at)
-settings(key TEXT PK, value TEXT)          -- json-encoded values; elevenlabs_api_key lives here
+settings(key TEXT PK, value TEXT)          -- json-encoded values (plus the PIN session secret)
 synth_stats(engine, voice, seconds REAL, words INTEGER)  -- running totals for the time estimate
 ```
 

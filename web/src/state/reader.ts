@@ -66,11 +66,8 @@ export function openReader(doc: Document, opts: { restart?: boolean } = {}): () 
     engine.on("finished", () => useUi.getState().showToast("Finished. Nicely done.")),
     engine.on("error", (e) => {
       const ui = useUi.getState();
-      if (e.code === "engine_not_configured") {
-        ui.showToast("Add your ElevenLabs API key to use this voice", "error");
-        ui.openSettings("listen");
-      } else if (e.code === "engine_error") {
-        ui.showToast("The cloud voice didn't respond. Try again or pick another voice.", "error");
+      if (e.code === "engine_error") {
+        ui.showToast("The voice couldn't read this paragraph. Try again or pick another voice.", "error");
       } else {
         ui.showToast(e.message, "error");
       }

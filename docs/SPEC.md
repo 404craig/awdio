@@ -15,8 +15,8 @@ In scope
 - Upload: PDF, EPUB, DOCX, TXT, Markdown. Max 50 MB.
 - Structure analysis: headings, paragraphs, list items, block quotes, pages.
   Purely layout analysis. awdio never summarises, classifies, rates, filters or
-  comments on the content of a document. Nothing about the content is sent to
-  any third party unless the user explicitly chooses the cloud voice engine.
+  comments on the content of a document. Nothing about the content is ever
+  sent to a third party: voices run locally and awdio is free to run.
 - Playback: play / pause, previous / next paragraph, skip back / forward 15 s,
   speed 0.5x–3.0x in 0.25 steps (pitch preserved), voice selection, resume.
 - Follow-along: the current word is highlighted and the current paragraph is
@@ -57,13 +57,13 @@ Out of scope (deliberately)
 - `web/` Vite + React 18 + TypeScript + Tailwind single-page app.
 - `data/` runtime data (uploads, parsed documents, audio cache, SQLite).
 
-TTS engines (see DECISIONS.md for why):
-- `kokoro` (default): Kokoro-82M, Apache-2.0 open weights, runs locally on
-  CPU, returns per-token timestamps. Private and free.
-- `elevenlabs` (optional): best-in-class expressiveness; user supplies an API
-  key in Settings; uses the with-timestamps endpoint for word alignment.
+TTS engine (see DECISIONS.md for why; awdio is free-only, so there is no
+cloud engine):
+- `kokoro`: Kokoro-82M, Apache-2.0 open weights, runs locally on CPU, returns
+  per-token timestamps. Private and free.
 
-Both engines expose the same contract: text in → audio file + word timings out.
+Engines sit behind one small contract (text in → audio file + word timings
+out), so another local engine can be added later.
 
 ## 3. Document model
 
@@ -170,9 +170,8 @@ the word's start timestamp.
 
 ### Settings sheet (from reader and library)
 - Voice: list grouped by engine → accent; tap to select; small play icon to
-  preview a fixed sample sentence. ElevenLabs section shows an API key field
-  (masked) when not configured, with a link to where to get one, and a
-  "Voices are fetched from your account" note once configured.
+  preview a fixed sample sentence. British voices are listed first; each
+  voice shows its gender and quality grade. Default voice: Heart (af_heart).
 - Speed slider with snap points; text size slider; font toggle; theme
   segmented control; auto-scroll toggle.
 

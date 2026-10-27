@@ -55,3 +55,13 @@ def test_voices_and_health_list_only_local_engines(client: TestClient) -> None:
     assert [e["id"] for e in engines] == ["kokoro"]
     assert set(engines[0]) == {"id", "name", "ready", "description", "voices"}
     assert client.get("/api/health").json() == {"status": "ok", "engines": [{"id": "kokoro", "ready": True}]}
+
+
+def test_kokoro_catalogue_lists_british_voices_first_and_keeps_heart_as_default() -> None:
+    from awdio.tts.kokoro_voices import DEFAULT_KOKORO_VOICE, KOKORO_VOICES
+
+    accents = [v.accent for v in KOKORO_VOICES]
+    assert accents == sorted(accents, key=lambda a: a != "British")
+    assert KOKORO_VOICES[0].id == "bf_emma"
+    assert DEFAULT_KOKORO_VOICE == "af_heart"
+    assert all(v.quality for v in KOKORO_VOICES)

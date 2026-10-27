@@ -13,12 +13,11 @@ text following along word by word. Personal, self-hosted, no accounts.
 
 ## Voices
 
-| Engine | Runs | Cost | Notes |
-|---|---|---|---|
-| Kokoro-82M (default) | on your machine, CPU | free | open weights, native word timestamps, your text never leaves the machine |
-| ElevenLabs (optional) | cloud | your own API key | most expressive voices; enable in Settings |
-
-Why these two and not others is in `docs/DECISIONS.md`.
+awdio is free and fully local: voices come from Kokoro-82M (open weights,
+Apache-2.0), running on your machine's CPU with native word timestamps. Your
+text never leaves the machine and nothing costs money. British voices are
+listed first; the default is Heart (`af_heart`), the highest-graded voice.
+Why Kokoro and not others is in `docs/DECISIONS.md`.
 
 ## Run it
 

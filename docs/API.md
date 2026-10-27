@@ -19,9 +19,10 @@ Vite proxies `/api` to `http://localhost:8000`.
 
 ## Health
 
-- `GET /api/health` → `{ "status": "ok", "engines": [{ "id": "kokoro", "ready": bool }, { "id": "elevenlabs", "ready": bool }] }`
-  `ready` for kokoro means the model is loaded (it loads in the background on
-  startup); for elevenlabs it means an API key is configured.
+- `GET /api/health` → `{ "status": "ok", "engines": [{ "id": "kokoro", "ready": bool }] }`
+  `ready` means the model is loaded (it loads in the background on startup).
+  awdio is free-only: Kokoro is the single engine; `engine` fields stay in the
+  API so another local engine can be added later.
 
 ## Documents
 
@@ -115,7 +116,7 @@ only, no leading/trailing whitespace, and is non-empty.
   }
   ```
   400 if the engine/voice is unknown, 503 `{ code: "engine_not_ready" }` while
-  the local model is still loading, 502 `{ code: "engine_error" }` on cloud failure.
+  the local model is still loading, 502 `{ code: "engine_error" }` if synthesis fails.
 - `GET /api/audio/{cacheKey}.{ext}` → the audio file (supports Range).
 - `POST /api/documents/{id}/prepare?engine&voice` → 202 `PrepareStatus`. Starts
   (or returns the existing) background synthesis of all blocks for that
@@ -127,24 +128,24 @@ only, no leading/trailing whitespace, and is non-empty.
 
 ```ts
 interface Voice {
-  id: string;            // e.g. "af_heart" or an ElevenLabs voice_id
-  engine: "kokoro" | "elevenlabs";
+  id: string;            // e.g. "af_heart"
+  engine: "kokoro";
   name: string;          // "Heart"
-  accent: string;        // "American", "British", … (ElevenLabs: from labels, else "Unknown")
+  accent: string;        // "British", "American"
   gender: "female" | "male" | "neutral";
   quality?: string;      // kokoro grade like "A", optional
 }
 interface EngineInfo {
-  id: "kokoro" | "elevenlabs";
-  name: string;              // "Kokoro (on this device)" / "ElevenLabs (cloud)"
+  id: "kokoro";
+  name: string;              // "Kokoro (on this device)"
   ready: boolean;
-  configured: boolean;       // elevenlabs: API key present
   description: string;       // one line for the settings UI
   voices: Voice[];
 }
 ```
 
-- `GET /api/voices` → `{ "engines": EngineInfo[] }`
+- `GET /api/voices` → `{ "engines": EngineInfo[] }`. Kokoro voices come British first,
+  then American, best `quality` grade first within each accent.
 - `GET /api/voices/{engine}/{voiceId}/preview` → audio file of a fixed sample
   sentence (cached). Same formats as block audio.
 
@@ -152,23 +153,19 @@ interface EngineInfo {
 
 ```ts
 interface Settings {
-  engine: "kokoro" | "elevenlabs";
+  engine: "kokoro";
   voiceId: string;
   speed: number;            // 0.5..3, step 0.25
   font: "serif" | "sans";
   textSize: number;         // px, 15..26
   theme: "system" | "light" | "dark" | "sepia";
   autoScroll: boolean;
-  elevenLabsConfigured: boolean;   // read-only
-  elevenLabsModelId: string;       // default "eleven_multilingual_v2"
 }
 ```
 
 - `GET /api/settings` → `Settings`
-- `PUT /api/settings` body: any subset of the writable fields plus optional
-  `elevenLabsApiKey: string` (write-only; empty string clears it) → `Settings`.
-  Keys are validated by calling the ElevenLabs voices endpoint; 400
-  `{ code: "invalid_api_key" }` if rejected.
+- `PUT /api/settings` body: any subset of the fields → `Settings`. 400
+  `{ code: "unknown_engine" | "unknown_voice" | "bad_request" }` for invalid values.
 
 ## Defaults
 
