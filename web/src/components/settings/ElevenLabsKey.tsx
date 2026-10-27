@@ -26,7 +26,7 @@ export function ElevenLabsKey() {
 
   return (
     <form onSubmit={submit} className="mt-3 rounded-card border border-hairline p-4">
-      <label htmlFor="eleven-key" className="flex items-center gap-2 text-[14px] font-medium">
+      <label htmlFor="eleven-key" className="flex items-center gap-2 text-[14px] font-normal">
         <KeyRound size={16} className="text-muted" aria-hidden />
         API key
       </label>
@@ -39,7 +39,7 @@ export function ElevenLabsKey() {
           value={key}
           onChange={(e) => setKey(e.target.value)}
           placeholder="sk_…"
-          className="h-11 min-w-0 flex-1 rounded-full border border-hairline bg-bg px-4 text-[15px] outline-none transition focus:border-accent"
+          className="h-11 min-w-0 flex-1 rounded-full border border-hairline bg-bg px-4 font-reading-sans text-[15px] outline-none transition focus:border-accent"
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "eleven-key-error" : undefined}
         />
@@ -48,7 +48,7 @@ export function ElevenLabsKey() {
         </button>
       </div>
       {error && (
-        <p id="eleven-key-error" className="mt-2 text-[13px] text-[#C4320A] dark:text-[#FF8A5B]">
+        <p id="eleven-key-error" className="mt-2 text-[13px] text-danger">
           {error}
         </p>
       )}
@@ -56,7 +56,7 @@ export function ElevenLabsKey() {
         href="https://elevenlabs.io/app/settings/api-keys"
         target="_blank"
         rel="noreferrer"
-        className="mt-3 inline-flex min-h-[32px] items-center gap-1 text-[13px] font-medium text-accent hover:underline"
+        className="mt-3 inline-flex min-h-[32px] items-center gap-1 text-[13px] font-normal text-accent-ink hover:underline"
       >
         Get a key from your ElevenLabs account
         <ExternalLink size={13} aria-hidden />

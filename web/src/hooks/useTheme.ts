@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useSettings } from "../state/settings";
 import { useMediaQuery } from "./useMediaQuery";
 
-const THEME_COLOR: Record<string, string> = { light: "#FAFAF8", dark: "#111111", sepia: "#F5ECD9" };
+const THEME_COLOR: Record<string, string> = { light: "#F3F1EB", dark: "#111214", sepia: "#F1E9D8" };
 
 /** Applies theme, reading font and text size to <html> as data attributes / CSS variables. */
 export function useTheme(): void {
@@ -15,6 +15,6 @@ export function useTheme(): void {
     root.dataset.theme = resolved;
     root.dataset.font = font;
     root.style.setProperty("--reading-size", `${textSize}px`);
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_COLOR[resolved]);
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", THEME_COLOR[resolved]));
   }, [resolved, font, textSize]);
 }

@@ -31,7 +31,7 @@ export function Player({ index }: { index: DocIndex }) {
     <div
       ref={ref}
       data-no-detach
-      className="glass fixed inset-x-0 bottom-0 z-30 touch-none rounded-t-sheet border-t border-hairline/80 shadow-sheet"
+      className="glass fixed inset-x-0 bottom-0 z-30 touch-none rounded-t-sheet border-t border-hairline"
       style={{ paddingBottom: "max(10px, var(--safe-bottom))" }}
     >
       <div className="mx-auto max-w-[720px] px-4 pt-1.5 sm:px-6">
@@ -87,7 +87,11 @@ function PlayButton() {
       onClick={player.toggle}
       aria-label={playing ? "Pause" : "Play"}
       aria-busy={buffering || undefined}
-      className="relative mx-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_6px_20px_-4px_rgb(var(--c-accent)/0.55)] transition duration-150 ease-out hover:brightness-105 active:scale-95"
+      className={`relative mx-0.5 flex h-16 w-16 items-center justify-center rounded-full transition duration-200 ease-out active:scale-95 ${
+        playing
+          ? "bg-accent text-on-accent shadow-[0_8px_28px_-6px_rgb(var(--c-accent)/0.7)]"
+          : "bg-primary text-on-primary hover:opacity-90"
+      }`}
     >
       {playing ? (
         <Pause size={26} fill="currentColor" strokeWidth={0} />
@@ -96,7 +100,7 @@ function PlayButton() {
       )}
       {buffering && (
         <svg className="pointer-events-none absolute -inset-[5px] animate-spin [animation-duration:900ms]" viewBox="0 0 74 74" aria-hidden>
-          <circle cx="37" cy="37" r="35.5" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="56 168" className="stroke-accent" />
+          <circle cx="37" cy="37" r="35.5" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="56 168" className="stroke-accent-ink" />
         </svg>
       )}
     </button>
@@ -131,7 +135,7 @@ function SpeedChip() {
       }}
       className="group flex h-11 items-center"
     >
-      <span className="flex h-8 min-w-[52px] items-center justify-center rounded-full bg-ink/[0.06] px-2.5 text-[13px] font-semibold tabular-nums transition-colors group-hover:bg-ink/10">
+      <span className="flex h-8 min-w-[52px] items-center justify-center rounded-full bg-ink/[0.06] px-2.5 text-[13px] font-medium tracking-[0.01em] tabular-nums transition-colors group-hover:bg-ink/10">
         {formatSpeed(speed)}
       </span>
     </button>
@@ -150,7 +154,7 @@ function VoiceChip() {
   const name = engines?.find((e) => e.id === engine)?.voices.find((v) => v.id === voiceId)?.name ?? prettyVoiceId(voiceId);
   return (
     <button type="button" onClick={() => openSettings("listen")} aria-label={`Voice: ${name}. Change voice`} title="Voice" className="group flex h-11 items-center">
-      <span className="flex h-8 min-w-[40px] items-center justify-center gap-1.5 rounded-full bg-ink/[0.06] px-2.5 text-[13px] font-semibold transition-colors group-hover:bg-ink/10">
+      <span className="flex h-8 min-w-[40px] items-center justify-center gap-1.5 rounded-full bg-ink/[0.06] px-2.5 text-[13px] font-medium tracking-[0.01em] transition-colors group-hover:bg-ink/10">
         <AudioLines size={15} aria-hidden />
         <span className="hidden max-w-[88px] truncate sm:inline">{name}</span>
       </span>

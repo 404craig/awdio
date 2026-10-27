@@ -1,26 +1,23 @@
-import type { CSSProperties } from "react";
-import type { SourceType } from "../../api";
-import { SOURCE_LABEL } from "../../lib/format";
+import { Mark } from "../brand/Mark";
 
-const HUES = [186, 148, 210, 268, 42, 340, 24];
+const VARIANTS = ["cover-ivory", "cover-black", "cover-silver"] as const;
 
-function hueFor(seed: string): number {
-  let h = 2166136261; // FNV-1a: stable per document id, well spread
+function variantFor(seed: string): string {
+  let h = 2166136261; // FNV-1a: stable per document id
   for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619) >>> 0;
-  return HUES[h % HUES.length];
+  return VARIANTS[(h >>> 16) % VARIANTS.length]; // upper bits mix best
 }
 
-export function Cover({ id, title, sourceType }: { id: string; title: string; sourceType: SourceType }) {
+/** A quiet typographic "object" in the brand materials: near-black, ivory or brushed silver. */
+export function Cover({ id, title }: { id: string; title: string }) {
   const initial = title.replace(/^[^\p{L}\p{N}]+/u, "").charAt(0).toUpperCase() || "a";
   return (
     <div
-      className="cover relative flex h-[92px] w-[68px] shrink-0 flex-col justify-between overflow-hidden rounded-[10px] p-2 shadow-[inset_0_0_0_1px_rgb(0_0_0/0.04)]"
-      style={{ "--h": hueFor(id) } as CSSProperties}
+      className={`${variantFor(id)} relative flex h-[96px] w-[72px] shrink-0 flex-col justify-between overflow-hidden rounded-[10px] p-2.5 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06),0_0_0_1px_rgb(var(--c-hairline))]`}
       aria-hidden
     >
-      <span className="absolute inset-y-0 left-[5px] w-px bg-current opacity-[0.12]" />
-      <span className="pl-1.5 font-serif text-[30px] font-semibold leading-none">{initial}</span>
-      <span className="pl-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] opacity-70">{SOURCE_LABEL[sourceType]}</span>
+      <span className="text-[32px] font-light leading-none tracking-[-0.02em]">{initial}</span>
+      <Mark className="h-[9px] self-end opacity-70" />
     </div>
   );
 }

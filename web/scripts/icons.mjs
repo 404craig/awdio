@@ -1,33 +1,32 @@
-// Generates the PWA icons (SVG + PNGs rasterised with Playwright). Run: npm run icons
-import { writeFileSync } from "node:fs";
+// Generates favicon + PWA icons from the brand mark (public/brand/mark.svg). Run: npm run icons
+import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 const out = new URL("../public/icons/", import.meta.url);
+const markPath = readFileSync(new URL("../public/brand/mark.svg", import.meta.url), "utf8").match(/ d="([^"]+)"/)[1];
 
-// A geometric single-storey "a": ring + stem, white on ember.
-const glyph = (scale) => {
-  const t = (v) => 256 + (v - 256) * scale;
-  const w = 56 * scale;
-  return `<circle cx="${t(256)}" cy="${t(260)}" r="${84 * scale}" fill="none" stroke="#fff" stroke-width="${w}"/>
-  <path d="M${t(340)} ${t(148)}V${t(372)}" stroke="#fff" stroke-width="${w}"/>`;
-};
-const bg = (rounded) =>
-  `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F06A22"/><stop offset="1" stop-color="#E04F06"/></linearGradient></defs>
-  <rect width="512" height="512" ${rounded ? 'rx="114"' : ""} fill="url(#g)"/>`;
-const svg = (rounded, scale) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">${bg(rounded)}${glyph(scale)}</svg>`;
+const NEAR_BLACK = "#111214";
+const IVORY = "#F3F1EB";
 
-writeFileSync(new URL("favicon.svg", out), svg(true, 1));
+// The mark's viewBox is 100×60 with the wave centred on (50, 30); `scale` sets its size in a 512 canvas.
+const svg = ({ rounded, scale }) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" ${rounded ? 'rx="116"' : ""} fill="${NEAR_BLACK}"/>
+  <g transform="translate(256 262) scale(${scale}) translate(-50 -30)">
+    <path d="${markPath}" fill="none" stroke="${IVORY}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>`;
+
+writeFileSync(new URL("favicon.svg", out), svg({ rounded: true, scale: 3.9 }));
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
 const targets = [
-  ["icon-192.png", 192, svg(true, 1)],
-  ["icon-512.png", 512, svg(true, 1)],
-  ["icon-maskable-512.png", 512, svg(false, 0.72)],
-  ["apple-touch-icon.png", 180, svg(false, 0.86)],
+  ["icon-192.png", 192, svg({ rounded: true, scale: 3.6 })],
+  ["icon-512.png", 512, svg({ rounded: true, scale: 3.6 })],
+  ["icon-maskable-512.png", 512, svg({ rounded: false, scale: 2.8 })], // inside the 80 % safe zone
+  ["apple-touch-icon.png", 180, svg({ rounded: false, scale: 3.6 })],
 ];
 for (const [name, size, markup] of targets) {
   await page.setViewportSize({ width: size, height: size });

@@ -63,7 +63,7 @@ export function Sheet({ title, onClose, children, header }: Props) {
           </div>
         )}
         <div className={`flex shrink-0 items-center justify-between px-5 ${wide ? "pt-4" : "pt-1"}`}>
-          <h2 className="text-[20px] font-semibold tracking-[-0.01em]">{title}</h2>
+          <h2 className="text-[22px] font-normal tracking-[-0.02em]">{title}</h2>
           <button type="button" onClick={onClose} className="tap -mr-2 text-muted hover:bg-ink/5 hover:text-ink" aria-label="Close">
             <X size={20} strokeWidth={2} />
           </button>

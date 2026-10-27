@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AudioWaveform, CircleCheck, Headphones, Pencil, Play, RotateCcw, Square, Trash2 } from "lucide-react";
 import type { DocumentSummary } from "../../api";
-import { FINISHED_PERCENT, formatDuration } from "../../lib/format";
+import { FINISHED_PERCENT, formatDuration, SOURCE_LABEL } from "../../lib/format";
 import { useLibrary } from "../../state/library";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ProgressRing } from "../ProgressRing";
@@ -29,51 +29,54 @@ export function DocumentCard({ doc }: { doc: DocumentSummary }) {
   items.push({ label: "Delete", icon: <Trash2 size={17} />, onSelect: () => setConfirming(true), destructive: true });
 
   return (
-    <article className="flex gap-4 rounded-card border border-hairline bg-surface p-4 shadow-soft transition-shadow duration-200 hover:shadow-lift">
+    <article className="flex gap-4 rounded-card border border-hairline bg-surface p-4 transition-colors duration-200 hover:border-ink/15 sm:p-5">
       <Link to={`/d/${doc.id}`} tabIndex={-1} aria-hidden className="shrink-0">
-        <Cover id={doc.id} title={doc.title} sourceType={doc.sourceType} />
+        <Cover id={doc.id} title={doc.title} />
       </Link>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-start gap-2">
-          {editing ? (
-            <RenameField
-              initial={doc.title}
-              onDone={(title) => {
-                setEditing(false);
-                if (title !== null) void rename(doc.id, title);
-              }}
-            />
-          ) : (
-            <h2 className="min-w-0 flex-1 text-[16px] font-semibold leading-snug tracking-[-0.01em]">
-              <Link to={`/d/${doc.id}`} className="line-clamp-2 rounded-sm hover:underline hover:decoration-ink/30 hover:underline-offset-2">
-                {doc.title}
-              </Link>
-            </h2>
-          )}
+          <div className="min-w-0 flex-1">
+            <p className="label">
+              {SOURCE_LABEL[doc.sourceType]} · {doc.pageCount} {doc.pageCount === 1 ? "page" : "pages"}
+            </p>
+            {editing ? (
+              <RenameField
+                initial={doc.title}
+                onDone={(title) => {
+                  setEditing(false);
+                  if (title !== null) void rename(doc.id, title);
+                }}
+              />
+            ) : (
+              <h2 className="mt-1 text-[17px] font-normal leading-snug tracking-[-0.01em]">
+                <Link to={`/d/${doc.id}`} className="line-clamp-2 rounded-sm hover:underline hover:decoration-ink/30 hover:underline-offset-4">
+                  {doc.title}
+                </Link>
+              </h2>
+            )}
+          </div>
           <OverflowMenu label={`More actions for ${doc.title}`} items={items} />
         </div>
-        <p className="mt-0.5 text-[13px] text-muted">
+        <p className="mt-1 text-[13px] text-muted">
           {finished ? formatDuration(doc.estimatedSeconds) : formatDuration(started ? remaining : doc.estimatedSeconds)}
-          {started && !finished ? " left" : ""} · {doc.pageCount} {doc.pageCount === 1 ? "page" : "pages"}
+          {started && !finished ? " left" : ""}
         </p>
 
-        <div className="mt-3 flex items-center gap-2.5" aria-label={finished ? "Finished" : `${percent}% listened`}>
-          <div className="h-1 flex-1 overflow-hidden rounded-full bg-ink/[0.08]">
+        <div className="mt-3 flex items-center gap-3" aria-label={finished ? "Finished" : `${percent}% listened`}>
+          <div className="h-[3px] flex-1 overflow-hidden rounded-full bg-track">
             <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${percent}%` }} />
           </div>
-          <span className={`text-right text-[12px] font-medium tabular-nums text-muted ${finished ? "" : "w-8"}`}>
-            {finished ? "Finished" : `${percent}%`}
-          </span>
+          <span className={`label text-right tabular-nums ${finished ? "" : "w-9"}`}>{finished ? "Finished" : `${percent}%`}</span>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           {finished ? (
             <button type="button" className="btn-secondary h-10 px-4 text-[14px]" onClick={() => navigate(`/d/${doc.id}`, { state: { restart: true } })}>
               <RotateCcw size={15} aria-hidden /> Listen again
             </button>
           ) : (
             <button type="button" className="btn-primary h-10 px-4 text-[14px]" onClick={() => navigate(`/d/${doc.id}`)}>
-              {started ? <Play size={15} fill="currentColor" strokeWidth={0} aria-hidden /> : <Headphones size={16} aria-hidden />}
+              {started ? <Play size={14} fill="currentColor" strokeWidth={0} aria-hidden /> : <Headphones size={15} aria-hidden />}
               {started ? "Continue" : "Start listening"}
             </button>
           )}
@@ -101,7 +104,7 @@ function PrepareStatus({ doc }: { doc: DocumentSummary }) {
   if (status === "running") {
     const value = total > 0 ? done / total : 0;
     return (
-      <span className="flex items-center gap-2 text-[12px] font-medium tabular-nums text-muted">
+      <span className="label flex items-center gap-2 tabular-nums">
         <ProgressRing value={value} size={18} label={`Preparing audio, ${Math.round(value * 100)}%`} />
         Preparing {Math.round(value * 100)}%
       </span>
@@ -109,12 +112,12 @@ function PrepareStatus({ doc }: { doc: DocumentSummary }) {
   }
   if (status === "done") {
     return (
-      <span className="flex items-center gap-1.5 text-[12px] font-medium text-muted">
-        <CircleCheck size={15} className="text-[#2F9E44]" aria-hidden /> Audio ready
+      <span className="label flex items-center gap-1.5">
+        <CircleCheck size={14} strokeWidth={1.75} className="text-ink" aria-hidden /> Audio ready
       </span>
     );
   }
-  if (status === "error") return <span className="text-[12px] font-medium text-[#C4320A]">Preparing failed</span>;
+  if (status === "error") return <span className="label text-danger">Preparing failed</span>;
   return null;
 }
 
@@ -132,7 +135,7 @@ function RenameField({ initial, onDone }: { initial: string; onDone(title: strin
         if (e.key === "Enter") onDone(value);
         if (e.key === "Escape") onDone(null);
       }}
-      className="-ml-2 h-9 min-w-0 flex-1 rounded-lg border border-accent bg-bg px-2 text-[16px] font-semibold outline-none ring-2 ring-accent/20"
+      className="-ml-2 mt-1 h-9 w-full min-w-0 rounded-lg border border-accent bg-bg px-2 text-[17px] font-normal outline-none ring-2 ring-accent/20"
     />
   );
 }

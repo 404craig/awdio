@@ -3,6 +3,7 @@ import { Check, LoaderCircle, Play, Square } from "lucide-react";
 import { voicePreviewUrl, type EngineInfo, type Voice } from "../../api";
 import { player } from "../../state/reader";
 import { useSettings } from "../../state/settings";
+import { Mark } from "../brand/Mark";
 import { ElevenLabsKey } from "./ElevenLabsKey";
 
 const GENDER: Record<Voice["gender"], string> = { female: "Female", male: "Male", neutral: "Neutral" };
@@ -71,13 +72,15 @@ function EngineSection({ engine, previewing, onPreview }: SectionProps) {
     <section aria-labelledby={`engine-${engine.id}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 id={`engine-${engine.id}`} className="text-[15px] font-semibold">
+          <h3 id={`engine-${engine.id}`} className="text-[16px] font-medium tracking-[-0.005em]">
             {engine.name}
           </h3>
           <p className="mt-0.5 text-pretty text-[13px] leading-snug text-muted">{engine.description}</p>
         </div>
         {engine.id === "kokoro" && !engine.ready && (
-          <span className="pill mt-0.5 shrink-0 bg-ink/[0.06] normal-case tracking-normal text-muted">Loading model…</span>
+          <span className="label mt-1 flex shrink-0 items-center gap-1.5 text-accent-ink">
+            <Mark animated className="h-2.5" /> Loading
+          </span>
         )}
       </div>
 
@@ -90,7 +93,7 @@ function EngineSection({ engine, previewing, onPreview }: SectionProps) {
               Voices are fetched from your account.{" "}
               <button
                 type="button"
-                className="font-medium text-accent hover:underline"
+                className="text-accent-ink hover:underline"
                 onClick={() => void saveApiKey("").catch(() => {})}
               >
                 Remove key
@@ -99,7 +102,7 @@ function EngineSection({ engine, previewing, onPreview }: SectionProps) {
           )}
           {groupByAccent(engine.voices).map(([accent, voices]) => (
             <div key={accent} className="mt-3">
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{accent}</div>
+              <div className="label mb-1.5">{accent}</div>
               <ul role="radiogroup" aria-label={`${engine.name} · ${accent} voices`} className="overflow-hidden rounded-card border border-hairline">
                 {voices.map((v) => {
                   const selected = current.engine === v.engine && current.voiceId === v.id;
@@ -122,8 +125,8 @@ function EngineSection({ engine, previewing, onPreview }: SectionProps) {
                           {selected && <Check size={13} strokeWidth={3} />}
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-[15px] font-medium">{v.name}</span>
-                          <span className="block text-[12px] text-muted">
+                          <span className="block text-[15px] font-normal">{v.name}</span>
+                          <span className="block text-[12px] tracking-[0.01em] text-muted">
                             {GENDER[v.gender]}
                             {v.quality ? ` · Grade ${v.quality}` : ""}
                           </span>

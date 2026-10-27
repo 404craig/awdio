@@ -25,7 +25,7 @@ export function ConfirmDialog({ title, body, confirmLabel, onConfirm, onCancel }
         tabIndex={-1}
         className="animate-rise-in relative w-full max-w-[380px] rounded-sheet bg-surface p-6 shadow-lift outline-none"
       >
-        <h2 id="confirm-title" className="text-[18px] font-semibold tracking-[-0.01em]">
+        <h2 id="confirm-title" className="text-[19px] font-medium tracking-[-0.015em]">
           {title}
         </h2>
         <p id="confirm-body" className="mt-2 text-[15px] leading-relaxed text-muted">
@@ -37,7 +37,7 @@ export function ConfirmDialog({ title, body, confirmLabel, onConfirm, onCancel }
           </button>
           <button
             type="button"
-            className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-[#D92D20] px-5 text-[15px] font-semibold text-white transition hover:brightness-105 active:scale-[0.98]"
+            className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-[#D92D20] px-5 text-[15px] font-medium text-white transition hover:opacity-90 active:scale-[0.98]"
             onClick={onConfirm}
           >
             {confirmLabel}

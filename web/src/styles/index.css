@@ -2,50 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ---- Theme tokens (docs/SPEC.md §7). Channels so Tailwind can apply alpha. ---- */
+/* ---- Brand tokens (docs/SPEC.md §7). Channels so Tailwind can apply alpha. ----
+   Near Black #111214 · Warm Ivory #F3F1EB · Brushed Silver #B8BCC2 · Electric Blue #305CFF.
+   Electric Blue is reserved for live/active states. */
 :root,
 [data-theme="light"] {
-  --c-bg: 250 250 248;
-  --c-surface: 255 255 255;
-  --c-ink: 26 26 26;
-  --c-muted: 107 107 107;
-  --c-hairline: 232 230 225;
-  --c-accent: 232 89 12;
-  --c-on-accent: 255 255 255;
-  --word-active: rgb(232 89 12 / 0.22);
-  --word-scrub: rgb(232 89 12 / 0.34);
-  --block-active: rgb(232 89 12 / 0.045);
-  --glass: rgb(255 255 255 / 0.9);
+  --c-bg: 243 241 235;
+  --c-surface: 251 250 247;
+  --c-surface-2: 236 234 227;
+  --c-raised: 255 255 255;
+  --c-ink: 17 18 20;
+  --c-muted: 111 115 120;
+  --c-hairline: 222 220 213;
+  --c-accent: 48 92 255;
+  --c-accent-ink: 48 92 255;
+  --c-on-accent: 243 241 235;
+  --c-primary: 17 18 20;
+  --c-on-primary: 243 241 235;
+  --c-danger: 196 50 10;
+  --track: rgb(184 188 194 / 0.5);
+  --word-active: rgb(48 92 255 / 0.16);
+  --word-scrub: rgb(48 92 255 / 0.3);
+  --block-active: rgb(17 18 20 / 0.04);
+  --glass: rgb(251 250 247 / 0.9);
+  --shadow-color: 17 18 20;
   color-scheme: light;
 }
 
 [data-theme="dark"] {
-  --c-bg: 17 17 17;
-  --c-surface: 28 28 30;
-  --c-ink: 242 242 242;
-  --c-muted: 154 154 154;
-  --c-hairline: 42 42 42;
-  --c-accent: 240 106 34;
-  --c-on-accent: 255 255 255;
-  --word-active: rgb(240 106 34 / 0.38);
-  --word-scrub: rgb(240 106 34 / 0.52);
-  --block-active: rgb(255 255 255 / 0.035);
-  --glass: rgb(28 28 30 / 0.9);
+  --c-bg: 17 18 20;
+  --c-surface: 26 27 30;
+  --c-surface-2: 35 36 40;
+  --c-raised: 54 55 61;
+  --c-ink: 243 241 235;
+  --c-muted: 184 188 194;
+  --c-hairline: 44 45 49;
+  --c-accent: 48 92 255;
+  --c-accent-ink: 74 114 255;
+  --c-on-accent: 243 241 235;
+  --c-primary: 243 241 235;
+  --c-on-primary: 17 18 20;
+  --c-danger: 255 138 104;
+  --track: rgb(184 188 194 / 0.2);
+  --word-active: rgb(74 114 255 / 0.22);
+  --word-scrub: rgb(74 114 255 / 0.4);
+  --block-active: rgb(243 241 235 / 0.04);
+  --glass: rgb(17 18 20 / 0.88);
+  --shadow-color: 0 0 0;
   color-scheme: dark;
 }
 
 [data-theme="sepia"] {
-  --c-bg: 245 236 217;
-  --c-surface: 251 244 228;
-  --c-ink: 59 47 30;
-  --c-muted: 122 104 78;
-  --c-hairline: 226 211 182;
-  --c-accent: 214 80 10;
-  --c-on-accent: 255 255 255;
-  --word-active: rgb(214 80 10 / 0.22);
-  --word-scrub: rgb(214 80 10 / 0.34);
-  --block-active: rgb(120 80 20 / 0.05);
-  --glass: rgb(251 244 228 / 0.92);
+  --c-bg: 241 233 216;
+  --c-surface: 248 242 228;
+  --c-surface-2: 233 224 205;
+  --c-raised: 255 251 242;
+  --c-ink: 47 42 34;
+  --c-muted: 117 106 89;
+  --c-hairline: 224 213 191;
+  --c-accent: 48 92 255;
+  --c-accent-ink: 48 92 255;
+  --c-on-accent: 248 242 228;
+  --c-primary: 47 42 34;
+  --c-on-primary: 248 242 228;
+  --c-danger: 176 48 16;
+  --track: rgb(150 135 110 / 0.3);
+  --word-active: rgb(48 92 255 / 0.16);
+  --word-scrub: rgb(48 92 255 / 0.3);
+  --block-active: rgb(47 42 34 / 0.05);
+  --glass: rgb(248 242 228 / 0.92);
+  --shadow-color: 47 42 34;
   color-scheme: light;
 }
 
@@ -72,11 +98,13 @@
   }
   body {
     @apply bg-bg font-sans text-ink;
-    font-feature-settings: "cv11", "ss01";
     min-height: 100dvh;
   }
+  ::selection {
+    background: var(--word-scrub);
+  }
   :focus-visible {
-    outline: 2px solid rgb(var(--c-accent));
+    outline: 2px solid rgb(var(--c-accent-ink));
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -96,13 +124,14 @@
     @apply inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors duration-150 ease-out;
   }
   .btn-primary {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent shadow-sm transition duration-150 ease-out hover:brightness-105 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-[15px] font-medium tracking-[0.01em] text-on-primary transition duration-150 ease-out hover:opacity-90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
   }
   .btn-secondary {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full border border-hairline bg-surface px-5 text-[15px] font-medium text-ink transition duration-150 ease-out hover:bg-ink/[0.03] active:scale-[0.98];
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full border border-hairline bg-transparent px-5 text-[15px] font-medium tracking-[0.01em] text-ink transition duration-150 ease-out hover:bg-ink/[0.04] active:scale-[0.98];
   }
-  .pill {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
+  /* Thin, tracked uppercase metadata (moodboard: "PREMIUM WIRELESS HEADPHONES"). */
+  .label {
+    @apply text-[11px] font-normal uppercase tracking-[0.12em] text-muted;
   }
 }
 
@@ -165,11 +194,11 @@
 .blk-quote {
   font-style: italic;
   padding-left: 32px;
-  background-image: linear-gradient(rgb(var(--c-accent) / 0.5), rgb(var(--c-accent) / 0.5));
+  background-image: linear-gradient(rgb(var(--c-muted) / 0.45), rgb(var(--c-muted) / 0.45));
   background-size: 3px calc(100% - 14px);
   background-position: 14px center;
   background-repeat: no-repeat;
-  color: rgb(var(--c-ink) / 0.86);
+  color: rgb(var(--c-ink) / 0.88);
 }
 .blk-list_item {
   position: relative;
@@ -208,10 +237,10 @@
   align-items: center;
   gap: 14px;
   margin: 2.4rem 0 1.6rem;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: Outfit, system-ui, sans-serif;
   font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
+  font-weight: 400;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgb(var(--c-muted));
   font-variant-numeric: tabular-nums;
@@ -280,12 +309,12 @@
 .range::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 999px;
-  background: linear-gradient(to right, rgb(var(--c-accent)) var(--fill), rgb(var(--c-ink) / 0.1) var(--fill));
+  background: linear-gradient(to right, rgb(var(--c-accent)) var(--fill), var(--track) var(--fill));
 }
 .range::-moz-range-track {
   height: 6px;
   border-radius: 999px;
-  background: linear-gradient(to right, rgb(var(--c-accent)) var(--fill), rgb(var(--c-ink) / 0.1) var(--fill));
+  background: linear-gradient(to right, rgb(var(--c-accent)) var(--fill), var(--track) var(--fill));
 }
 .range::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -309,6 +338,41 @@
 }
 .range:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 3px rgb(var(--c-accent) / 0.45);
+}
+
+/* Pages contain their children's margins so measured heights match placeholders. */
+[data-page] {
+  display: flow-root;
+}
+
+/* ---- Library covers: brand objects (ivory, near-black, brushed silver), same in every theme ---- */
+.cover-ivory {
+  background: linear-gradient(160deg, #f7f5f0, #e9e6de);
+  color: #111214;
+}
+.cover-black {
+  background: linear-gradient(160deg, #26272b, #111214 70%);
+  color: #f3f1eb;
+}
+.cover-silver {
+  background: linear-gradient(135deg, #d9dce0 0%, #b8bcc2 45%, #cfd2d6 70%, #a9adb3 100%);
+  color: #111214;
+}
+
+/* ---- Loading mark: a soft pulse travels along the wave ---- */
+@keyframes mark-pulse {
+  from { stroke-dashoffset: 130; }
+  to { stroke-dashoffset: 0; }
+}
+.mark-pulse {
+  stroke-dasharray: 30 100;
+  animation: mark-pulse 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mark-pulse {
+    stroke-dasharray: none;
+    animation: none;
+  }
 }
 
 /* Pages contain their children's margins so measured heights match placeholders. */

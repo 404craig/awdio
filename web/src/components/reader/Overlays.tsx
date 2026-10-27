@@ -14,9 +14,9 @@ export function BackToReading() {
       <button
         type="button"
         onClick={() => useReader.setState({ attached: true })}
-        className="glass animate-rise-in pointer-events-auto flex h-11 items-center gap-2 rounded-full border border-hairline px-4 text-[14px] font-semibold text-ink shadow-lift active:scale-[0.97]"
+        className="glass animate-rise-in pointer-events-auto flex h-11 items-center gap-2 rounded-full border border-hairline px-4 text-[14px] font-medium tracking-[0.01em] text-ink shadow-lift active:scale-[0.97]"
       >
-        <Icon size={16} strokeWidth={2.25} className="text-accent" aria-hidden />
+        <Icon size={16} strokeWidth={2.25} className="text-accent-ink" aria-hidden />
         Back to reading
       </button>
     </div>
@@ -32,7 +32,7 @@ export function ScrubLabel({ index }: { index: DocIndex }) {
     <div className="pointer-events-none fixed z-40" style={{ left: x, top: Math.max(scrub.y - 76, 8) }} aria-live="polite">
       <div
         key={scrub.page}
-        className="animate-pop-in whitespace-nowrap rounded-full bg-ink px-3.5 py-1.5 text-[13px] font-semibold tabular-nums text-bg shadow-lift"
+        className="animate-pop-in whitespace-nowrap rounded-full bg-ink px-3.5 py-1.5 text-[13px] font-medium tracking-[0.02em] text-bg shadow-lift"
       >
         {pageName(index.pages[scrub.page])}
       </div>

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { CloudUpload, Plus, Settings } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 import { EmptyState } from "../components/library/EmptyState";
 import { DocumentCard } from "../components/library/DocumentCard";
 import { UploadCard } from "../components/library/UploadCard";
-import { Wordmark } from "../components/Wordmark";
+import { Mark } from "../components/brand/Mark";
+import { Wordmark } from "../components/brand/Wordmark";
 import { formatDuration } from "../lib/format";
 import { ACCEPTED_EXTENSIONS, useLibrary } from "../state/library";
 import { useUi } from "../state/ui";
@@ -66,8 +67,8 @@ export function Library() {
 
   return (
     <div className="min-h-dvh">
-      <header className="mx-auto flex max-w-[1080px] items-center justify-between px-5 sm:px-8" style={{ paddingTop: "calc(var(--safe-top) + 14px)" }}>
-        <Wordmark className="text-[26px]" />
+      <header className="mx-auto flex max-w-[1080px] items-center justify-between px-5 sm:px-8" style={{ paddingTop: "calc(var(--safe-top) + 16px)", minHeight: "calc(var(--safe-top) + 60px)" }}>
+        <Wordmark />
         <div className="-mr-2 flex items-center gap-1">
           {!empty && (
             <button type="button" className="btn-secondary h-10 gap-1.5 px-4 text-[14px]" onClick={choose}>
@@ -80,12 +81,12 @@ export function Library() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1080px] px-5 pb-20 pt-8 sm:px-8 sm:pt-12">
+      <main className="mx-auto max-w-[1080px] px-5 pb-20 pt-10 sm:px-8 sm:pt-16">
         {!empty && (
-          <div className="mb-6">
-            <h1 className="text-[30px] font-semibold leading-tight tracking-[-0.025em] sm:text-[34px]">Library</h1>
+          <div className="mb-7 sm:mb-9">
+            <h1 className="text-[36px] font-light leading-tight tracking-[-0.03em] sm:text-[44px]">Library</h1>
             {docs.length > 0 && (
-              <p className="mt-1 text-[14px] text-muted">
+              <p className="label mt-2">
                 {docs.length} {docs.length === 1 ? "document" : "documents"} · {formatDuration(total)} of listening
               </p>
             )}
@@ -135,9 +136,9 @@ export function Library() {
 
       {dragging && !empty && (
         <div className="animate-fade-in pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-bg/80 p-6 backdrop-blur-sm">
-          <div className="flex w-full max-w-[520px] flex-col items-center rounded-[24px] border-2 border-dashed border-accent bg-surface/80 px-6 py-16 text-center">
-            <CloudUpload size={32} className="text-accent" aria-hidden />
-            <p className="mt-4 text-[18px] font-semibold">Drop to add to your library</p>
+          <div className="flex w-full max-w-[520px] flex-col items-center rounded-sheet border border-dashed border-accent bg-surface/80 px-6 py-16 text-center">
+            <Mark className="h-6 text-accent-ink" />
+            <p className="mt-5 text-[20px] font-light tracking-[-0.01em]">Drop to add to your library</p>
           </div>
         </div>
       )}

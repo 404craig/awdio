@@ -109,11 +109,26 @@ for (const [name, options] of Object.entries(VIEWPORTS)) {
   await shot("settings-reading");
   await page.keyboard.press("Escape");
 
-  // Reader, dark
+  // Dark theme: the brand's primary mood
   await setSettings(page, { theme: "dark" });
   await page.emulateMedia({ colorScheme: "dark" });
-  await openReader(page);
+  await page.goto(`${server.url}/`);
+  await page.waitForSelector("article");
+  await page.waitForTimeout(300);
+  await shot("library-dark");
+
+  await openReader(page, { play: false });
   await shot("reader-dark");
+  await page.getByRole("button", { name: "Play" }).click();
+  await page.waitForSelector('button[aria-label="Pause"]:not([aria-busy])');
+  await page.waitForTimeout(1400);
+  await shot("reader-dark-playing");
+
+  await page.getByRole("button", { name: /^Voice:/ }).click();
+  await page.getByRole("dialog").getByText("Heart").waitFor();
+  await page.waitForTimeout(300);
+  await shot("settings-dark");
+  await page.keyboard.press("Escape");
 
   // Sepia + sans, to check the other theme/font combination
   await setSettings(page, { theme: "sepia", font: "sans" });

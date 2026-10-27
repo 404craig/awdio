@@ -2,6 +2,7 @@ import { useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointer
 import { pageName, pageOfOrdinal, positionAt, snippet, tickStep } from "../../lib/docIndex";
 import { formatDuration, formatPercent } from "../../lib/format";
 import { useDelayedFlag } from "../../hooks/useDelayedFlag";
+import { Mark } from "../brand/Mark";
 import { player, selectOrdinal, useReader } from "../../state/reader";
 import { useSettings } from "../../state/settings";
 import type { DocIndex } from "../../lib/docIndex";
@@ -89,14 +90,14 @@ export function Timeline({ index }: { index: DocIndex }) {
         onPointerCancel={onPointerCancel}
         onKeyDown={onKeyDown}
       >
-        <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 overflow-hidden rounded-full bg-ink/[0.09]">
+        <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 overflow-hidden rounded-full bg-track">
           <div className="absolute inset-y-0 left-0 bg-accent" style={{ width: `${fraction * 100}%` }} />
           {ticks.map((t) => (
             <span key={t} className="absolute inset-y-0 w-px bg-ink/[0.14]" style={{ left: `${t * 100}%` }} />
           ))}
         </div>
         <div
-          className={`absolute top-1/2 h-[18px] w-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_1px_3px_rgb(0_0_0/0.25),0_0_0_0.5px_rgb(0_0_0/0.08)] transition-transform duration-150 ease-out ${
+          className={`absolute top-1/2 h-[18px] w-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#FBFAF7] shadow-[0_1px_3px_rgb(0_0_0/0.25),0_0_0_0.5px_rgb(0_0_0/0.08)] transition-transform duration-150 ease-out ${
             scrub ? "scale-[1.35]" : "group-hover:scale-110"
           }`}
           style={{ left: `${fraction * 100}%` }}
@@ -104,22 +105,23 @@ export function Timeline({ index }: { index: DocIndex }) {
         />
         {scrub && targetBlock && trackWidth > 0 && (
           <div
-            className="animate-rise-in pointer-events-none absolute bottom-[calc(100%+6px)] rounded-[14px] border border-hairline bg-surface px-3.5 py-2.5 shadow-lift"
+            className="animate-rise-in pointer-events-none absolute bottom-[calc(100%+6px)] rounded-card border border-hairline bg-raised px-3.5 py-2.5 shadow-lift"
             style={{ left: bubbleLeft, width: bubbleWidth }}
             aria-hidden
           >
-            <div className="flex items-baseline justify-between gap-2 text-[13px] font-semibold tabular-nums">
+            <div className="flex items-baseline justify-between gap-2 text-[13px] font-medium tabular-nums">
               <span className="truncate">{pageName(page)}</span>
-              <span className="text-accent">{formatPercent(fraction)}</span>
+              <span className="text-accent-ink">{formatPercent(fraction)}</span>
             </div>
             <div className="mt-1 line-clamp-2 font-serif text-[13px] leading-snug text-muted">{snippet(targetBlock)}</div>
           </div>
         )}
       </div>
-      <div className="-mt-1.5 flex items-center justify-between text-[12px] font-medium tabular-nums text-muted">
+      <div className="-mt-1.5 flex items-center justify-between text-[12px] font-normal tabular-nums tracking-[0.02em] text-muted">
         <span>{formatPercent(fraction)}</span>
         {voiceLoading || slowAudio ? (
-          <span className="text-accent" role="status">
+          <span className="flex items-center gap-1.5 text-accent-ink" role="status">
+            <Mark animated className="h-2.5" />
             {voiceLoading ? "Preparing voice…" : "Preparing audio…"}
           </span>
         ) : (

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { isApiError, unlock } from "../api";
-import { Wordmark } from "../components/Wordmark";
+import { Wordmark } from "../components/brand/Wordmark";
 import { useSettings } from "../state/settings";
 
 export function Unlock() {
@@ -38,12 +38,13 @@ export function Unlock() {
 
   return (
     <div className="flex min-h-dvh items-center justify-center px-5 py-10">
-      <form onSubmit={submit} className="w-full max-w-[360px] rounded-[20px] border border-hairline bg-surface px-7 pb-8 pt-9 text-center shadow-soft">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent/10 text-accent" aria-hidden>
-          <Lock size={24} strokeWidth={1.9} />
+      <form onSubmit={submit} className="w-full max-w-[360px] rounded-sheet border border-hairline bg-surface px-7 pb-8 pt-10 text-center">
+        <Wordmark className="mx-auto h-[28px]" />
+        <div className="mx-auto mt-8 flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 text-ink" aria-hidden>
+          <Lock size={20} strokeWidth={1.6} />
         </div>
-        <Wordmark className="mt-5 text-[22px]" />
-        <h1 className="mt-1 text-[15px] text-muted">Enter the access PIN to continue</h1>
+        <h1 className="mt-4 text-[20px] font-light tracking-[-0.01em]">Enter your PIN</h1>
+        <p className="label mt-2">This awdio is private</p>
         <div key={attempt} className={attempt ? "animate-shake" : ""}>
           <input
             autoFocus
@@ -60,13 +61,13 @@ export function Unlock() {
             className="mt-7 h-14 w-full rounded-card border border-hairline bg-bg text-center text-[26px] tracking-[0.5em] outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
         </div>
-        <p id="pin-error" className="mt-3 min-h-[20px] text-[13px] text-[#C4320A] dark:text-[#FF8A5B]" role="alert">
+        <p id="pin-error" className="mt-3 min-h-[20px] text-[13px] text-danger" role="alert">
           {error}
         </p>
         <button type="submit" className="btn-primary mt-2 w-full" disabled={pin.length < 4 || busy}>
           {busy ? "Checking…" : "Unlock"}
         </button>
-        <p className="mt-4 text-[12px] text-muted">This device will be remembered.</p>
+        <p className="label mt-5">This device will be remembered</p>
       </form>
     </div>
   );

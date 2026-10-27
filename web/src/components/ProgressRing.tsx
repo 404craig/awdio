@@ -21,7 +21,7 @@ export function ProgressRing({ value, size = 20, stroke = 2.5, className = "", l
       aria-label={label}
       aria-hidden={label ? undefined : true}
     >
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-hairline" />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-track" />
       <circle
         cx={size / 2}
         cy={size / 2}

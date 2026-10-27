@@ -23,6 +23,14 @@ first-synthesis delay in ms. The mock serves three documents (one ≈ 60 pages /
 silent WAV block audio whose length is `wordCount × 0.38 s` with even word timings, voices,
 settings, progress and a prepare job that advances over time.
 
+## Brand
+
+Tokens follow docs/SPEC.md §7: CSS variables per `data-theme` (light / dark / sepia) in
+`src/styles/index.css`, mapped to Tailwind colours. Outfit is the UI font; Literata (serif) and
+Inter (sans) are for reading text. Electric Blue (`accent`) is only used for live states: the playing
+play button, timeline/progress fills, the current-word pill, toggles, focus and selection. Icons
+are generated from `public/brand/mark.svg` by `npm run icons`.
+
 ## Structure
 
 ```
@@ -32,7 +40,7 @@ src/
   state/        zustand stores: settings, library, reader (+ player actions), ui (sheet, toast)
   lib/          docIndex.ts (flat lookups over a document), format.ts
   hooks/        theme, progress saving, keyboard shortcuts, focus trap, media queries
-  components/   reader/ (column, pages, player, timeline, top bar, overlays), library/, settings/, shared primitives
+  components/   brand/ (inline wordmark + wave mark from public/brand), reader/ (column, pages, player, timeline, top bar, overlays), library/, settings/, shared primitives
   screens/      Library, Reader, Unlock
 mock/           Vite middleware implementing the API for development
 scripts/        screenshots, perf, icons

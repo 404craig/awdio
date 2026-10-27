@@ -23,8 +23,8 @@ export function Toast() {
       {toast && (
         <div
           key={toast.id}
-          className={`glass animate-rise-in pointer-events-auto rounded-full border border-hairline px-4 py-2 text-[14px] font-medium shadow-lift ${
-            toast.tone === "error" ? "text-[#C4320A] dark:text-[#FF8A5B]" : "text-ink"
+          className={`glass animate-rise-in pointer-events-auto rounded-full border border-hairline px-4 py-2 text-[14px] font-normal tracking-[0.01em] shadow-lift ${
+            toast.tone === "error" ? "text-danger" : "text-ink"
           }`}
         >
           {toast.text}

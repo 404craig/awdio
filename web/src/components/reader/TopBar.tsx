@@ -14,8 +14,8 @@ export function TopBar({ index }: { index: DocIndex }) {
           <ChevronLeft size={24} strokeWidth={2} />
         </Link>
         <div className="min-w-0 flex-1 px-1 leading-tight">
-          <h1 className="truncate text-[15px] font-semibold tracking-[-0.01em]">{index.doc.title}</h1>
-          <p className="text-[12px] font-medium tabular-nums text-muted" aria-live="polite">
+          <h1 className="truncate text-[15px] font-medium tracking-[-0.005em]">{index.doc.title}</h1>
+          <p className="label mt-0.5 tabular-nums" aria-live="polite">
             {pageIndicator(index.pages[page])} / {index.pages.length}
           </p>
         </div>
