@@ -30,7 +30,7 @@ PARAGRAPH = (
     "of a wife. However little known the feelings or views of such a man may be on his first entering a "
     "neighbourhood, Dr. Smith paid £3.50 for 2 coffees!"
 )
-ALICE_57 = corpus.ALICE[0][1][0]  # Alice's 57-word opening paragraph: a single long sentence
+ALICE_57 = corpus.ALICE[0][1][0]  # Alice's 57-word opening paragraph: one long sentence, split at its colon
 TEARS_57 = corpus.ALICE[1][1][0]  # the 57-word "Curiouser and curiouser!" paragraph: two sentences
 
 
@@ -78,7 +78,7 @@ def test_sentence_steps_and_cached_block_duration(tmp_path: Path) -> None:
     """57-word paragraphs: per-sentence latency, and through the real worker/cache, wav length == duration."""
     engine = KokoroEngine()
     engine.warm()
-    for label, text in (("one sentence", ALICE_57), ("two sentences", TEARS_57)):
+    for label, text in (("one long sentence, clause-split", ALICE_57), ("two sentences", TEARS_57)):
         marks, speech = _step_times(engine, text)
         assert len(marks) == len(split_sentences(text))
         print(
