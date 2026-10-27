@@ -17,7 +17,7 @@ import numpy as np
 from ..config import ffmpeg_available
 from .alignment import align_words, char_spans
 from .audio_io import MP3_DECODE_RATE, decode_mp3, mp3_duration_estimate
-from .base import EngineError, EngineNotConfigured, Gender, SynthContext, SynthResult, Voice
+from .base import EngineError, EngineNotConfigured, Gender, SynthContext, SynthResult, SynthSteps, Voice, as_steps
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +37,7 @@ class ElevenLabsEngine:
     id = "elevenlabs"
     name = "ElevenLabs (cloud)"
     description = "Most expressive voices, using your own API key. Text is sent to ElevenLabs."
+    local = False
 
     def __init__(self, credentials: Callable[[], Credentials], client: httpx.Client | None = None) -> None:
         self._credentials = credentials
@@ -76,7 +77,11 @@ class ElevenLabsEngine:
             self._voices = (fingerprint, time.monotonic(), voices)
             return voices
 
-    def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthResult:
+    def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthSteps:
+        # One request per block: ElevenLabs gets the whole paragraph (plus neighbours) for natural prosody.
+        return as_steps(lambda: self._synthesize(text, voice_id, context))
+
+    def _synthesize(self, text: str, voice_id: str, context: SynthContext) -> SynthResult:
         creds = self._credentials()
         if not creds.api_key:
             raise EngineNotConfigured("add an ElevenLabs API key in Settings")

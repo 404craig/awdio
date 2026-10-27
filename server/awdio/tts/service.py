@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Generator
 from concurrent.futures import Future
 from typing import Protocol
 
 from ..parsing.base import Block
-from .base import Engine, EngineNotReady, SynthContext, UnknownVoice
+from .base import Engine, EngineNotReady, SynthContext, SynthResult, SynthSteps, UnknownVoice
 from .cache import (
     PAD_AFTER_HEADING,
     PAD_AFTER_OTHER,
@@ -84,23 +85,21 @@ class SynthesisService:
         pad = PAD_AFTER_HEADING if block.kind in ("title", "heading") else PAD_AFTER_OTHER
         owner = CacheOwner(engine_id, voice_id, doc.id, block_index)
 
-        def run() -> CachedAudio:
+        def run() -> Generator[None, None, CachedAudio]:
             cached = self.cache.lookup(key)
             if cached is not None:
                 return cached
-            started = time.perf_counter()
-            result = engine.synthesize(block.text, voice_id, context=context)
+            result, compute = yield from _timed(engine.synthesize(block.text, voice_id, context=context))
             entry = self.cache.store(key, result, pad_seconds=pad, owner=owner)
-            elapsed = time.perf_counter() - started
             log.info(
-                "synthesised block %d (%d words) with %s/%s: %.2fs audio in %.2fs (RTF %.2f)",
+                "synthesised block %d (%d words) with %s/%s: %.2fs audio in %.2fs compute (RTF %.2f)",
                 block_index,
                 block.word_count,
                 engine_id,
                 voice_id,
                 entry.duration_sec,
-                elapsed,
-                elapsed / entry.duration_sec if entry.duration_sec else 0.0,
+                compute,
+                compute / entry.duration_sec if entry.duration_sec else 0.0,
             )
             return entry
 
@@ -118,8 +117,21 @@ class SynthesisService:
             self.warm(engine)
             raise EngineNotReady(engine_id)
 
-        def run() -> CachedAudio:
-            result = engine.synthesize(PREVIEW_TEXT, voice_id, context=SynthContext(kind="paragraph"))
+        def run() -> Generator[None, None, CachedAudio]:
+            result = yield from engine.synthesize(PREVIEW_TEXT, voice_id, context=SynthContext(kind="paragraph"))
             return self.cache.store(key, result, pad_seconds=0.0, owner=CacheOwner(engine_id, voice_id))
 
         return self.worker.submit(key, run, Priority.ON_DEMAND)
+
+
+def _timed(steps: SynthSteps) -> Generator[None, None, tuple[SynthResult, float]]:
+    """Pass the engine's steps through, adding up only the time spent computing (not time spent parked)."""
+    compute = 0.0
+    while True:
+        started = time.perf_counter()
+        try:
+            next(steps)
+        except StopIteration as done:
+            return done.value, compute + time.perf_counter() - started
+        compute += time.perf_counter() - started
+        yield

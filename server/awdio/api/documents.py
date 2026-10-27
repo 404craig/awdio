@@ -19,6 +19,7 @@ from ..errors import ApiError
 from ..library import LoadedDocument
 from ..parsing import NoTextError, ParseError, detect_source_type
 from ..services import Services, get_services
+from ..tts.registry import UnknownEngine
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -105,7 +106,21 @@ async def upload_document(request: Request, services: Services = Depends(get_ser
     except ParseError as exc:
         raise ApiError(422, "parse_error", str(exc)) from exc
     log.info("uploaded document %s (%s, %d words)", row.id, row.source_type, row.word_count)
+    if services.config.auto_prepare:
+        await run_in_threadpool(_auto_prepare, services, row)
     return JSONResponse(summary_json(services, row), status_code=201)
+
+
+def _auto_prepare(services: Services, row: DocumentRow) -> None:
+    """Pre-synthesise a new document with the saved voice, but only on a local engine: uploading must never
+    spend cloud credits on its own (the client can still call prepare for ElevenLabs)."""
+    settings = services.settings.get()
+    try:
+        engine = services.engines.get(settings["engine"])
+    except UnknownEngine:
+        return
+    if engine.local:
+        services.prepare.start(row.id, settings["engine"], settings["voiceId"])
 
 
 async def _save_limited(upload: UploadFile, destination: Path) -> None:

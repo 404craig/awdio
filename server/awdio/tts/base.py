@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -59,10 +60,32 @@ class SynthResult:
     mp3: bytes | None = None  # already-encoded audio to store untouched (no ffmpeg to decode it)
 
 
+SynthSteps = Generator[None, None, SynthResult]
+"""A synthesis in progress: each `next()` does one unit of work (a sentence); StopIteration carries the result.
+
+The worker checks between steps whether more urgent work is waiting and, if so, parks the generator."""
+
+
+def as_steps(synthesize: Callable[[], SynthResult]) -> SynthSteps:
+    """A synthesis that runs as one uninterruptible step (e.g. a single cloud request)."""
+    yield from ()
+    return synthesize()
+
+
+def run_steps(steps: SynthSteps) -> SynthResult:
+    """Drive a synthesis to completion without pre-emption."""
+    while True:
+        try:
+            next(steps)
+        except StopIteration as done:
+            return done.value
+
+
 class Engine(Protocol):
     id: str
     name: str
     description: str
+    local: bool  # runs on this machine (free, private); cloud engines are never used without being asked
 
     def ready(self) -> bool: ...
     def configured(self) -> bool: ...
@@ -70,4 +93,4 @@ class Engine(Protocol):
         """Load whatever is slow to load. Always called on the synthesis worker thread."""
 
     def voices(self) -> list[Voice]: ...
-    def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthResult: ...
+    def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthSteps: ...

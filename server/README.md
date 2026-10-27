@@ -28,6 +28,7 @@ The first start downloads the Kokoro-82M weights (~330 MB) into the Hugging Face
 | `AWDIO_ACCESS_PIN` | unset | 4–8 digits; when set, every `/api/*` route except config/unlock needs the unlock cookie |
 | `AWDIO_AUDIO_FORMAT` | `wav` | `wav` (16-bit) or `mp3` (needs ffmpeg; falls back to wav with a warning) |
 | `ELEVENLABS_API_KEY` | unset | seeds the ElevenLabs key on first start (it can also be set in Settings) |
+| `AWDIO_AUTO_PREPARE` | `1` | after an upload, prepare all audio with the saved voice (local engines only; `0` disables) |
 | `AWDIO_WEB_DIST` | `../web/dist` | where the built frontend lives |
 | `AWDIO_HOST` / `AWDIO_PORT` | `127.0.0.1` / `8000` | used by `python -m awdio` |
 
@@ -45,8 +46,8 @@ awdio/
   parsing/         pdf (PyMuPDF), epub (ebooklib+bs4), docx (python-docx), text (txt+md);
                    structure.py: normalisation, hyphenation repair, heading fallback, titles, paging
   tts/             base.py engine protocol; kokoro_engine.py (local), elevenlabs_engine.py (cloud);
-                   alignment.py tokens/characters → word timings; worker.py single synthesis thread with
-                   priorities (warm > on-demand > prefetch > prepare); service.py cache-or-synthesise;
+                   alignment.py tokens/characters → word timings; sentences.py sentence splitter; worker.py
+                   single synthesis thread with priorities and pre-emption; service.py cache-or-synthesise;
                    cache.py <key>.wav|mp3 + <key>.json; prepare.py whole-document background jobs
 ```
 
@@ -55,6 +56,24 @@ Synthesis is per block. A block's audio is cached under `sha1(engine|voice|doc|b
 `[start, end]` per `text.split(" ")` word, monotonic and within the audio duration: engine timestamps are mapped
 onto words by character offsets, and words without timestamps are interpolated by character length.
 `estimatedSeconds` uses the measured seconds-per-word of synthesised blocks (default 0.38).
+
+### Scheduling, pre-emption and latency
+
+All synthesis runs on one worker thread, by priority: warm-up > on-demand (the listener is waiting) >
+prefetch (`?prefetch=true`) > prepare. Kokoro synthesises a block sentence by sentence (a conservative splitter
+that keeps "Dr.", "3.50", initials and "U.S." intact and merges fragments under 4 words) and the worker checks
+between sentences whether more urgent work is waiting. If it is, the current job is parked, keeping the audio
+made so far, the urgent block runs, and the parked job resumes where it stopped. A seek therefore waits for at
+most one sentence of someone else's work plus the synthesis of its own block. ElevenLabs runs as one request
+per block (it needs the whole paragraph and its neighbours for prosody).
+
+Uploads are prepared automatically in document order (cached blocks are skipped) when the saved engine is
+local; nothing is ever sent to ElevenLabs without the client asking. Changing the voice starts nothing.
+
+Cold start caveat: Kokoro on a 4-core CPU runs at roughly 0.45x real time (slower when the CPU is busy), and a
+block's audio is only returned once the whole block is done, so an uncached 57-word paragraph takes about 8 s.
+Titles and headings take about 1 s. Once playback is going, prefetching keeps ahead because synthesis is faster
+than real time; auto-prepare hides the rest for freshly uploaded documents.
 
 Optional query parameter beyond the contract: `GET …/blocks/{i}/audio?prefetch=true` queues the request at
 prefetch priority, so a user's on-demand request (e.g. after a seek) is served before background prefetches.

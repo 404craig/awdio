@@ -25,6 +25,7 @@ class Config:
     host: str = "127.0.0.1"
     port: int = 8000
     warm_engines: bool = True
+    auto_prepare: bool = True
     dev_cors_origins: tuple[str, ...] = ("http://localhost:5173", "http://127.0.0.1:5173")
 
     @classmethod
@@ -44,6 +45,7 @@ class Config:
             web_dist=Path(web_dist).resolve() if web_dist else cls.web_dist,
             host=os.environ.get("AWDIO_HOST", "127.0.0.1"),
             port=int(os.environ.get("AWDIO_PORT", "8000")),
+            auto_prepare=os.environ.get("AWDIO_AUTO_PREPARE", "1").strip().lower() not in ("0", "false", "no", "off"),
         )
 
     @property

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -10,7 +11,8 @@ from fastapi.testclient import TestClient
 from awdio.config import Config
 from awdio.main import create_app
 from awdio.settings import SettingsStore
-from awdio.tts.base import Engine, SynthContext, SynthResult, Voice
+from awdio.tts.base import Engine, SynthContext, SynthResult, SynthSteps, Voice
+from awdio.tts.sentences import split_sentences
 
 from . import corpus
 
@@ -24,10 +26,13 @@ class FakeEngine:
     id = "kokoro"
     name = "Fake Kokoro"
     description = "test engine"
+    local = True
 
-    def __init__(self, *, ready: bool = True) -> None:
+    def __init__(self, *, ready: bool = True, sentence_delay: float = 0.0) -> None:
         self.is_ready = ready
+        self.sentence_delay = sentence_delay
         self.calls: list[tuple[str, str, SynthContext]] = []
+        self.sentences: list[str] = []  # every sentence synthesised, in the order the worker ran them
 
     def ready(self) -> bool:
         return self.is_ready
@@ -44,8 +49,14 @@ class FakeEngine:
             Voice("bf_emma", "kokoro", "Emma", "British", "female", "B-"),
         ]
 
-    def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthResult:
+    def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthSteps:
         self.calls.append((text, voice_id, context))
+        sentences = split_sentences(text)
+        for i, sentence in enumerate(sentences):
+            time.sleep(self.sentence_delay)
+            self.sentences.append(sentence)
+            if i + 1 < len(sentences):
+                yield
         words = text.split(" ")
         seconds = len(words) * FAKE_SECONDS_PER_WORD
         t = np.arange(int(seconds * FAKE_RATE)) / FAKE_RATE
@@ -98,10 +109,21 @@ def make_client(tmp_path: Path) -> Iterator[Callable[..., TestClient]]:
     clients: list[TestClient] = []
 
     def factory(
-        *, pin: str | None = None, engines: Callable[[SettingsStore], list[Engine]] | None = None, warm: bool = False
+        *,
+        pin: str | None = None,
+        engines: Callable[[SettingsStore], list[Engine]] | None = None,
+        warm: bool = False,
+        auto_prepare: bool = False,
+        fake: FakeEngine | None = None,
     ) -> TestClient:
-        config = Config(data_dir=tmp_path / "data", access_pin=pin, warm_engines=warm, web_dist=tmp_path / "no-dist")
-        fake = FakeEngine()
+        config = Config(
+            data_dir=tmp_path / "data",
+            access_pin=pin,
+            warm_engines=warm,
+            auto_prepare=auto_prepare,
+            web_dist=tmp_path / "no-dist",
+        )
+        fake = fake or FakeEngine()
         app = create_app(config, engines or (lambda _settings: [fake]))
         client = TestClient(app)
         client.__enter__()

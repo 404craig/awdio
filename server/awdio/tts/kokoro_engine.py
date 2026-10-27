@@ -11,8 +11,9 @@ from typing import Any
 import numpy as np
 
 from .alignment import EngineToken, TokenChunk, align_words, token_spans
-from .base import EngineError, SynthContext, SynthResult, UnknownVoice, Voice
+from .base import EngineError, SynthContext, SynthResult, SynthSteps, UnknownVoice, Voice
 from .kokoro_voices import DEFAULT_KOKORO_VOICE, KOKORO_VOICES
+from .sentences import split_sentences
 
 os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
@@ -30,6 +31,7 @@ class KokoroEngine:
     id = "kokoro"
     name = "Kokoro (on this device)"
     description = "Natural open-weights voices that run privately on this machine. Free."
+    local = True
 
     def __init__(self, default_voice: str = DEFAULT_KOKORO_VOICE) -> None:
         self._default_voice = default_voice
@@ -50,25 +52,32 @@ class KokoroEngine:
         pipeline = self._pipeline(lang_code(self._default_voice))
         pipeline.load_voice(self._default_voice)
 
-    def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthResult:
+    def synthesize(self, text: str, voice_id: str, *, context: SynthContext) -> SynthSteps:
+        """Synthesise sentence by sentence, yielding between sentences so the worker can pre-empt."""
         if voice_id not in self._voice_ids:
             raise UnknownVoice(voice_id)
         pipeline = self._pipeline(lang_code(voice_id))
         pieces: list[np.ndarray] = []
         chunks: list[TokenChunk] = []
         offset = 0.0
-        try:
-            for result in pipeline(text, voice=voice_id, speed=1.0):
-                if result.audio is None:
-                    continue
-                audio = result.audio.detach().cpu().numpy().astype(np.float32).reshape(-1)
-                tokens = [EngineToken(t.text, t.whitespace or "", t.start_ts, t.end_ts) for t in result.tokens or []]
-                chunks.append(TokenChunk(result.graphemes, tokens, offset))
-                pieces.append(audio)
-                offset += len(audio) / SAMPLE_RATE
-        except Exception as exc:  # torch / G2P failures surface as many types
-            log.exception("kokoro synthesis failed")
-            raise EngineError("local synthesis failed") from exc
+        sentences = split_sentences(text)
+        for i, sentence in enumerate(sentences):
+            try:
+                for result in pipeline(sentence, voice=voice_id, speed=1.0):
+                    if result.audio is None:
+                        continue
+                    audio = result.audio.detach().cpu().numpy().astype(np.float32).reshape(-1)
+                    tokens = [
+                        EngineToken(t.text, t.whitespace or "", t.start_ts, t.end_ts) for t in result.tokens or []
+                    ]
+                    chunks.append(TokenChunk(result.graphemes, tokens, offset))
+                    pieces.append(audio)
+                    offset += len(audio) / SAMPLE_RATE
+            except Exception as exc:  # torch / G2P failures surface as many types
+                log.exception("kokoro synthesis failed")
+                raise EngineError("local synthesis failed") from exc
+            if i + 1 < len(sentences):
+                yield
         audio = np.concatenate(pieces) if pieces else np.zeros(int(0.2 * SAMPLE_RATE), dtype=np.float32)
         speech_end = len(audio) / SAMPLE_RATE
         timings = align_words(text, token_spans(text, chunks), speech_end)
