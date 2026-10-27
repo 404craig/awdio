@@ -1,5 +1,5 @@
 /**
- * Pure helpers for the word-indexed timeline (docs/SPEC.md §4) and timing lookups.
+ * Pure helpers for the word-indexed timeline (docs/DECISIONS.md D3) and character positions.
  * No DOM, no I/O: unit-tested in timeline.test.ts.
  */
 
@@ -7,8 +7,6 @@ export interface Position {
   blockIndex: number;
   wordIndex: number;
 }
-
-export type Timings = readonly (readonly [number, number])[];
 
 /** Index of the last element whose value ≤ target (0 when target precedes all). */
 export function lastAtOrBefore(sorted: ArrayLike<number>, target: number): number {
@@ -18,19 +16,6 @@ export function lastAtOrBefore(sorted: ArrayLike<number>, target: number): numbe
   while (lo < hi) {
     const mid = (lo + hi + 1) >> 1;
     if (sorted[mid] <= target) lo = mid;
-    else hi = mid - 1;
-  }
-  return lo;
-}
-
-/** The word being spoken at time t: the last word whose start ≤ t. */
-export function findWordAt(timings: Timings, t: number): number {
-  let lo = 0;
-  let hi = timings.length - 1;
-  if (hi < 0) return 0;
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1;
-    if (timings[mid][0] <= t) lo = mid;
     else hi = mid - 1;
   }
   return lo;
@@ -67,48 +52,20 @@ export function ordinalToPosition(blocks: readonly TimelineBlock[], ordinal: num
   return { blockIndex: lo, wordIndex: clamped - blocks[lo].wordStart };
 }
 
-/** Where a block's audio stands for skip computation: duration when known, else an estimate. */
-export interface SkipBlock {
-  wordCount: number;
-  durationSec: number | null;
-}
-
-export interface SkipTarget {
-  blockIndex: number;
-  /** Seconds into the block's audio. Exact when the block's duration was known. */
-  time: number;
-  exact: boolean;
-}
-
-/**
- * Move `delta` seconds from `time` within `blockIndex`, walking across block boundaries.
- * Unknown durations are estimated from word count × secondsPerWord. Clamped to the document.
- */
-export function computeSkipTarget(
-  blocks: readonly SkipBlock[],
-  from: { blockIndex: number; time: number },
-  delta: number,
-  secondsPerWord: number,
-): SkipTarget {
-  const duration = (i: number) => blocks[i].durationSec ?? blocks[i].wordCount * secondsPerWord;
-  let b = from.blockIndex;
-  let t = from.time + delta;
-  while (t < 0) {
-    if (b === 0) return { blockIndex: 0, time: 0, exact: true };
-    b -= 1;
-    t += duration(b);
+/** Start of each block in the document's spoken characters (one separator between blocks). */
+export function blockCharStarts(texts: readonly string[]): number[] {
+  const starts: number[] = [];
+  let at = 0;
+  for (const t of texts) {
+    starts.push(at);
+    at += t.length + 1;
   }
-  while (t >= duration(b)) {
-    if (b === blocks.length - 1) {
-      return { blockIndex: b, time: Math.max(0, duration(b) - 0.25), exact: blocks[b].durationSec !== null };
-    }
-    t -= duration(b);
-    b += 1;
-  }
-  return { blockIndex: b, time: t, exact: blocks[b].durationSec !== null };
+  return starts;
 }
 
-/** Word index for an estimated time inside a block whose timings are not loaded yet. */
-export function estimateWord(wordCount: number, time: number, secondsPerWord: number): number {
-  return Math.min(wordCount - 1, Math.max(0, Math.floor(time / secondsPerWord)));
+/** Global character position → (block, character within the block), clamped to the document. */
+export function blockAtChar(starts: readonly number[], totalChars: number, char: number): { blockIndex: number; char: number } {
+  const clamped = Math.min(Math.max(char, 0), Math.max(totalChars - 1, 0));
+  const blockIndex = lastAtOrBefore(starts, clamped);
+  return { blockIndex, char: clamped - (starts[blockIndex] ?? 0) };
 }
