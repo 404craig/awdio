@@ -132,8 +132,19 @@ async function open(data: Uint8Array): Promise<PDFDocumentProxy> {
   }
 }
 
+/**
+ * pdf.js can't start its own worker from inside our parsing worker (it reads `window.location`)
+ * and its fallback would load the pdf.js worker into our worker's scope, where it takes over
+ * `self.onmessage`. So inside a worker we hand it an explicitly created nested worker.
+ */
+function configureWorker(workerSrc: string): void {
+  const inWorker = typeof window === "undefined" && typeof Worker !== "undefined";
+  if (inWorker && !GlobalWorkerOptions.workerPort) GlobalWorkerOptions.workerPort = new Worker(workerSrc, { type: "module" });
+  else GlobalWorkerOptions.workerSrc = workerSrc;
+}
+
 export async function parsePdf(data: Uint8Array, opts: { onProgress?: ProgressFn; workerSrc?: string } = {}): Promise<ParsedDocument> {
-  if (opts.workerSrc) GlobalWorkerOptions.workerSrc = opts.workerSrc;
+  if (opts.workerSrc) configureWorker(opts.workerSrc);
   const pdf = await open(data);
   try {
     const fonts = new FontWeights();

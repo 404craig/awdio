@@ -1,54 +1,81 @@
 # awdio
 
-Listen to your own documents, read aloud by a natural neural voice, with the
-text following along word by word. Personal, self-hosted, no accounts.
+Listen to your own documents on your iPhone, read aloud by the phone's own
+voices, with the text following along word by word. No server, no account,
+nothing to pay for.
 
-- Upload PDF, EPUB, DOCX, TXT or Markdown. awdio works out titles, paragraphs
-  and pages. It never judges or summarises the content; it only lays it out.
-- Play, pause, skip, change speed (pitch preserved), pick a voice.
-- Drag the timeline with a finger to any page; tap any word to start there;
-  press-and-hold on the text and drag to scrub word by word.
-- The screen highlights the word being spoken and scrolls with the reading.
-- Progress is saved per document and resumes on any device that opens awdio.
+- Add a PDF, EPUB, DOCX, TXT or Markdown file. awdio works out titles,
+  paragraphs and pages on the phone. It never judges or summarises the
+  content; it only lays it out.
+- Play, pause, skip 15 s, jump paragraphs, change speed, pick a voice.
+- Drag the timeline to any page; tap any word to start there; press and hold
+  on the text and drag to scrub word by word.
+- The word being spoken is highlighted and the page scrolls with the reading.
+- Your place is saved per document and picked up when you come back.
 
-## Voices
+## Use it on your iPhone
 
-awdio is free and fully local: voices come from Kokoro-82M (open weights,
-Apache-2.0), running on your machine's CPU with native word timestamps. Your
-text never leaves the machine and nothing costs money. British voices are
-listed first; the default is Heart (`af_heart`), the highest-graded voice.
-Why Kokoro and not others is in `docs/DECISIONS.md`.
+1. Open the site in **Safari** (for this repository:
+   `https://<your-github-user>.github.io/awdio/`).
+2. Tap **Share**, then **Add to Home Screen**. Open awdio from the Home Screen:
+   it runs full screen, works offline and shows controls on the lock screen.
+3. Tap **Choose a file** and pick a document from Files or iCloud Drive.
+4. Tap **Start listening**.
 
-## Run it
+To try it without a document of your own, open the site with `?demo=1` at the
+end of the address: three public-domain samples are added to your library.
 
-Requirements: Python 3.11+, [uv](https://docs.astral.sh/uv/), Node 20+.
+### Get a better voice (free)
+
+Want a more natural voice? It's free. On your iPhone: Settings →
+Accessibility → Spoken Content → Voices → English → download an Enhanced or
+Premium voice (for example Serena, Jamie or Daniel). awdio will use it
+automatically. You can still choose any installed voice in awdio's settings.
+
+## Privacy
+
+Your documents never leave the phone. The file is read and analysed in the
+browser, and the document, your place in it and your settings are stored in
+the browser's storage on this device (details in [docs/DATA.md](docs/DATA.md)).
+Speech uses the voices installed on the phone. The site is static: after it
+has loaded once there is nothing to talk to. Deleting a document in awdio
+removes it from the phone; clearing Safari's website data removes everything.
+
+## Offline
+
+After the first visit the app is cached by a service worker: it opens, plays
+your documents and adds new ones without a connection. A new version is
+picked up automatically the next time it starts online.
+
+## Deploy your own copy (GitHub Pages)
+
+1. Push this repository to GitHub (the workflow builds on pushes to `main`,
+   `master` or `claude/awdio-build`).
+2. One time only: in the repository on GitHub go to **Settings → Pages →
+   Build and deployment → Source: GitHub Actions**.
+3. The **Deploy to GitHub Pages** workflow (`.github/workflows/pages.yml`)
+   tests, builds with `BASE_PATH=/awdio/` and publishes `web/dist`. If you
+   rename the repository, change `BASE_PATH` in the workflow to match.
+
+## Local development
+
+Requirements: Node 20+.
 
 ```bash
-make setup      # installs server and web dependencies
-make dev        # API on http://localhost:8000, UI on http://localhost:5173
+make setup      # npm install in web/
+make dev        # http://localhost:5173  (add ?demo=1 for sample documents)
+make test       # typecheck + unit tests
+make build      # production build in web/dist
+make preview    # serve the production build on http://localhost:4173
 ```
 
-Production (single process, serves the built UI):
-
-```bash
-make run        # builds web/dist, then serves everything on http://localhost:8000
-```
-
-The first start downloads the Kokoro weights (about 330 MB) into the
-Hugging Face cache; the UI shows "Preparing voice…" until the model is loaded.
-
-Optional environment variables are listed in `.env.example`. Setting
-`AWDIO_ACCESS_PIN` puts a single PIN screen in front of the app for when you
-host it somewhere reachable.
-
-Docker:
-
-```bash
-docker build -t awdio . && docker run -p 8000:8000 -v awdio-data:/data awdio
-```
+Desktop browsers have their own voices, so the app is usable on a laptop for
+development; use the browser's device toolbar at iPhone size. Add
+`?fakeSpeech=1` to use a simulated voice (what the automated checks use).
+More in [web/README.md](web/README.md).
 
 ## Layout
 
-- `server/` FastAPI service: parsing, structure analysis, TTS, cache, SQLite.
-- `web/` React + TypeScript app.
-- `docs/` specification (`SPEC.md`), API contract (`API.md`), architecture and decisions.
+- `web/` the app (React + TypeScript + Vite PWA).
+- `docs/` [specification](docs/SPEC.md), [architecture](docs/ARCHITECTURE.md),
+  [data](docs/DATA.md), [decisions](docs/DECISIONS.md), brand assets.

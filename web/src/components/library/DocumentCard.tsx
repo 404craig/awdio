@@ -1,32 +1,32 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AudioWaveform, CircleCheck, Headphones, Pencil, Play, RotateCcw, Square, Trash2 } from "lucide-react";
-import type { DocumentSummary } from "../../api";
+import { Headphones, Pencil, Play, RotateCcw, Trash2 } from "lucide-react";
+import { useListeningTime } from "../../hooks/useListeningTime";
 import { FINISHED_PERCENT, formatDuration, SOURCE_LABEL } from "../../lib/format";
-import { useLibrary } from "../../state/library";
+import { useLibrary, type LibraryItem } from "../../state/library";
 import { ConfirmDialog } from "../ConfirmDialog";
-import { ProgressRing } from "../ProgressRing";
 import { Cover } from "./Cover";
 import { OverflowMenu, type MenuItem } from "./OverflowMenu";
 
-export function DocumentCard({ doc }: { doc: DocumentSummary }) {
+export function DocumentCard({ doc }: { doc: LibraryItem }) {
   const navigate = useNavigate();
-  const { rename, remove, prepare, stopPrepare } = useLibrary();
+  const { rename, remove } = useLibrary();
+  const listeningTime = useListeningTime();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
-  const finished =
-    !!doc.progress && (doc.progress.percent >= FINISHED_PERCENT || doc.progress.wordOrdinal >= doc.wordCount - 1);
-  const percent = finished ? 100 : Math.floor(doc.progress?.percent ?? 0);
-  const started = (doc.progress?.wordOrdinal ?? 0) > 0;
-  const preparing = doc.prepare.status === "running";
-  const prepared = doc.prepare.status === "done";
-  const remaining = doc.estimatedSeconds * (1 - percent / 100);
+  const ordinal = doc.progress?.wordOrdinal ?? 0;
+  const exactPercent = doc.wordCount > 0 ? (ordinal / doc.wordCount) * 100 : 0;
+  const finished = !!doc.progress && (exactPercent >= FINISHED_PERCENT || ordinal >= doc.wordCount - 1);
+  const percent = finished ? 100 : Math.floor(exactPercent);
+  const started = ordinal > 0;
+  const total = listeningTime(doc.charCount);
+  const remaining = total * (1 - exactPercent / 100);
 
-  const items: MenuItem[] = [{ label: "Rename", icon: <Pencil size={17} />, onSelect: () => setEditing(true) }];
-  if (preparing) items.push({ label: "Stop preparing", icon: <Square size={16} />, onSelect: () => void stopPrepare(doc.id) });
-  else if (!prepared) items.push({ label: "Prepare audio", icon: <AudioWaveform size={17} />, onSelect: () => void prepare(doc.id) });
-  items.push({ label: "Delete", icon: <Trash2 size={17} />, onSelect: () => setConfirming(true), destructive: true });
+  const items: MenuItem[] = [
+    { label: "Rename", icon: <Pencil size={17} />, onSelect: () => setEditing(true) },
+    { label: "Delete", icon: <Trash2 size={17} />, onSelect: () => setConfirming(true), destructive: true },
+  ];
 
   return (
     <article className="flex gap-4 rounded-card border border-hairline bg-surface p-4 transition-colors duration-200 hover:border-ink/15 sm:p-5">
@@ -58,7 +58,7 @@ export function DocumentCard({ doc }: { doc: DocumentSummary }) {
           <OverflowMenu label={`More actions for ${doc.title}`} items={items} />
         </div>
         <p className="mt-1 text-[13px] text-muted">
-          {finished ? formatDuration(doc.estimatedSeconds) : formatDuration(started ? remaining : doc.estimatedSeconds)}
+          {formatDuration(started && !finished ? remaining : total)}
           {started && !finished ? " left" : ""}
         </p>
 
@@ -80,13 +80,12 @@ export function DocumentCard({ doc }: { doc: DocumentSummary }) {
               {started ? "Continue" : "Start listening"}
             </button>
           )}
-          <PrepareStatus doc={doc} />
         </div>
       </div>
       {confirming && (
         <ConfirmDialog
           title={`Delete “${doc.title}”?`}
-          body="This removes the document, your place in it and any prepared audio. This can't be undone."
+          body="This removes the document and your place in it from this device. This can't be undone."
           confirmLabel="Delete"
           onCancel={() => setConfirming(false)}
           onConfirm={() => {
@@ -99,27 +98,6 @@ export function DocumentCard({ doc }: { doc: DocumentSummary }) {
   );
 }
 
-function PrepareStatus({ doc }: { doc: DocumentSummary }) {
-  const { status, done, total } = doc.prepare;
-  if (status === "running") {
-    const value = total > 0 ? done / total : 0;
-    return (
-      <span className="label flex items-center gap-2 tabular-nums">
-        <ProgressRing value={value} size={18} label={`Preparing audio, ${Math.round(value * 100)}%`} />
-        Preparing {Math.round(value * 100)}%
-      </span>
-    );
-  }
-  if (status === "done") {
-    return (
-      <span className="label flex items-center gap-1.5">
-        <CircleCheck size={14} strokeWidth={1.75} className="text-ink" aria-hidden /> Audio ready
-      </span>
-    );
-  }
-  if (status === "error") return <span className="label text-danger">Preparing failed</span>;
-  return null;
-}
 
 function RenameField({ initial, onDone }: { initial: string; onDone(title: string | null): void }) {
   const [value, setValue] = useState(initial);

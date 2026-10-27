@@ -84,7 +84,7 @@ export function wordOffsets(words: readonly string[]): number[] {
 /** The word containing (or last starting before) `charIndex`. */
 export const wordAtChar = (offsets: readonly number[], charIndex: number) => lastAtOrBefore(offsets, charIndex);
 
-/** Word an utterance has probably reached after `seconds`, from the measured speaking rate. */
-export function estimatedWord(offsets: readonly number[], seconds: number, charsPerSecond: number, rate: number): number {
-  return wordAtChar(offsets, Math.max(0, seconds) * charsPerSecond * rate);
+/** Word an utterance has probably reached `seconds` after word `fromWord` began, from the measured speaking rate. */
+export function estimatedWordFrom(offsets: readonly number[], fromWord: number, seconds: number, charsPerSecond: number, rate: number): number {
+  return wordAtChar(offsets, (offsets[fromWord] ?? 0) + Math.max(0, seconds) * charsPerSecond * rate);
 }

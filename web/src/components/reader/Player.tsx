@@ -1,11 +1,13 @@
 import { useEffect, useRef } from "react";
 import { AudioLines, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import type { ReactNode } from "react";
+import { useDelayedFlag } from "../../hooks/useDelayedFlag";
 import type { DocIndex } from "../../lib/docIndex";
 import { formatSpeed } from "../../lib/format";
 import { player, useReader } from "../../state/reader";
 import { useSettings } from "../../state/settings";
 import { useUi } from "../../state/ui";
+import { useActiveVoice } from "../../state/voices";
 import { metrics } from "./metrics";
 import { SkipIcon } from "./SkipIcon";
 import { Timeline } from "./Timeline";
@@ -80,7 +82,8 @@ function IconButton({ label, onClick, children }: { label: string; onClick(): vo
 
 function PlayButton() {
   const playing = useReader((s) => s.playing);
-  const buffering = useReader((s) => s.buffering !== null);
+  // Voices usually start within a few hundred ms; only show the ring when it takes longer.
+  const buffering = useDelayedFlag(useReader((s) => s.buffering !== null), 300);
   return (
     <button
       type="button"
@@ -142,16 +145,10 @@ function SpeedChip() {
   );
 }
 
-function prettyVoiceId(id: string): string {
-  const name = id.includes("_") ? id.split("_").slice(1).join(" ") : id;
-  return name.charAt(0).toUpperCase() + name.slice(1);
-}
-
 function VoiceChip() {
-  const { engine, voiceId } = useSettings((s) => s.settings);
-  const engines = useSettings((s) => s.engines);
+  const voice = useActiveVoice();
   const openSettings = useUi((s) => s.openSettings);
-  const name = engines?.find((e) => e.id === engine)?.voices.find((v) => v.id === voiceId)?.name ?? prettyVoiceId(voiceId);
+  const name = voice?.name ?? "No voice";
   return (
     <button type="button" onClick={() => openSettings("listen")} aria-label={`Voice: ${name}. Change voice`} title="Voice" className="group flex h-11 items-center">
       <span className="flex h-8 min-w-[40px] items-center justify-center gap-1.5 rounded-full bg-ink/[0.06] px-2.5 text-[13px] font-medium tracking-[0.01em] transition-colors group-hover:bg-ink/10">

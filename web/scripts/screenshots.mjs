@@ -1,142 +1,144 @@
-// Visual check: renders key screens against the mock API at phone and desktop sizes.
-// Run: npm run screenshots   → web/screenshots/*.png
-import { mkdirSync } from "node:fs";
-import { createRequire } from "node:module";
-import { startMockServer } from "./serve-mock.mjs";
+// Visual check of the key phone screens, on-device flows only: demo documents seeded into
+// IndexedDB (?demo=1) and the fake speech engine (?fakeSpeech=1).
+// Run: npm run screenshots   → web/screenshots/*.png (393×852 @2x)
+import { mkdirSync, readdirSync, rmSync } from "node:fs";
+import { chromium, patchSettings, PHONE, startPreview, watchErrors } from "./harness.mjs";
 
-const require = createRequire(import.meta.url);
-const { chromium } = require("playwright");
 const outDir = new URL("../screenshots/", import.meta.url).pathname;
 mkdirSync(outDir, { recursive: true });
+for (const f of readdirSync(outDir)) if (f.endsWith(".png")) rmSync(outDir + f);
 
-const VIEWPORTS = {
-  mobile: { viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
-  desktop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 },
-};
-
-const server = await startMockServer();
+const server = await startPreview(5198);
 const browser = await chromium.launch();
 const errors = [];
+const READING = { theme: "light", font: "serif", textSize: 19, speed: 1, voiceTipDismissed: false, homeScreenTipDismissed: true };
 
-async function setSettings(page, body) {
-  await page.request.put(`${server.url}/api/settings`, { data: body });
-}
-
-async function openReader(page, { play = true, waitToast = true } = {}) {
-  await page.goto(`${server.url}/d/alice`);
-  await page.waitForSelector(".w.is-active");
-  await page.waitForTimeout(300);
-  if (play) {
-    await page.getByRole("button", { name: "Play" }).click();
-    await page.waitForSelector('button[aria-label="Pause"]:not([aria-busy])');
-    await page.waitForTimeout(1400);
+async function newPhone(name, { voices = "", hold = false } = {}) {
+  const context = await browser.newContext({ ...PHONE, colorScheme: "light", reducedMotion: "reduce" });
+  if (hold) {
+    // Keep parsing results back so the "Analysing structure…" card can be captured.
+    await context.addInitScript(() => {
+      const Real = window.Worker;
+      window.Worker = class extends Real {
+        set onmessage(fn) {
+          super.onmessage = (event) => event.data?.type !== "done" && fn(event);
+        }
+      };
+    });
   }
-  if (waitToast) await page.waitForTimeout(2200); // let "Resumed at…" fade
+  const page = await context.newPage();
+  watchErrors(page, name, errors);
+  const query = `fakeSpeech=1${voices ? `&fakeVoices=${voices}` : ""}`;
+  const go = async (path, extra = "") => {
+    await page.goto(`${server.url}${path}?${query}${extra}`);
+  };
+  const shot = (file) => page.screenshot({ path: `${outDir}${file}.png` });
+  return { context, page, go, shot };
 }
 
-for (const [name, options] of Object.entries(VIEWPORTS)) {
-  const context = await browser.newContext({ ...options, colorScheme: "light", reducedMotion: "reduce" });
-  const page = await context.newPage();
-  page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
-  page.on("console", (m) => m.type() === "error" && errors.push(`${name}: ${m.text()}`));
-  const shot = (file) => page.screenshot({ path: `${outDir}${name}-${file}.png` });
+async function openAlice(phone, { play = true } = {}) {
+  await phone.go("/d/demo-alice");
+  await phone.page.waitForSelector(".w.is-active");
+  await phone.page.waitForTimeout(3600); // let "Resumed at…" fade
+  if (play) {
+    await phone.page.getByRole("button", { name: "Play" }).click();
+    await phone.page.waitForSelector('button[aria-label="Pause"]');
+    await phone.page.waitForTimeout(1800);
+  }
+}
 
-  await setSettings(page, { theme: "light", font: "serif", textSize: 19, speed: 1 });
-
-  // Library
-  await page.goto(`${server.url}/`);
+// ---- Library with the three demo documents, then the reader ----------------------------
+{
+  const phone = await newPhone("main");
+  const { page } = phone;
+  await phone.go("/", "&demo=1");
   await page.waitForSelector("article");
-  await page.waitForTimeout(300);
-  await shot("library");
+  await patchSettings(page, READING);
+  await phone.go("/");
+  await page.waitForSelector("article");
+  await page.waitForTimeout(400);
+  await phone.shot("library");
 
-  // Empty library (documents list intercepted)
-  await page.route("**/api/documents", (route) =>
-    route.request().method() === "GET" ? route.fulfill({ json: [] }) : route.continue(),
-  );
-  await page.goto(`${server.url}/`);
-  await page.getByText("Your library is empty").waitFor();
-  await shot("library-empty");
-  await page.unroute("**/api/documents");
-
-  // Access PIN screen (config intercepted so the mock needs no PIN)
-  await page.route("**/api/config", (route) => route.fulfill({ json: { accessPinRequired: true, unlocked: false, version: "mock" } }));
-  await page.goto(`${server.url}/`);
-  await page.getByLabel("PIN").waitFor();
-  await page.getByLabel("PIN").fill("12");
-  await shot("unlock");
-  await page.unroute("**/api/config");
-
-  // Reader, light, while playing
-  await openReader(page);
-  await shot("reader-light");
+  await openAlice(phone);
+  await phone.shot("reader-light");
 
   // Timeline drag (bubble visible), captured mid-drag
   const track = await page.getByRole("slider", { name: "Position in document" }).boundingBox();
   const y = track.y + track.height / 2;
-  await page.mouse.move(track.x + track.width * 0.12, y);
+  await page.mouse.move(track.x + track.width * 0.2, y);
   await page.mouse.down();
   await page.mouse.move(track.x + track.width * 0.4, y, { steps: 6 });
-  await page.mouse.move(track.x + track.width * 0.62, y, { steps: 6 });
+  await page.mouse.move(track.x + track.width * 0.55, y, { steps: 6 });
   await page.waitForTimeout(250);
-  await shot("reader-scrub");
+  await phone.shot("reader-scrub");
   await page.mouse.up();
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(900);
 
   // Press-and-hold scrub inside the text
-  const words = page.locator(".w");
-  const box = await words.nth(Math.floor((await words.count()) / 2)).boundingBox();
-  await page.evaluate(() => window.scrollBy(0, 0));
-  const target = await page.locator(".blk.is-current .w").nth(3).boundingBox();
-  const start = target ?? box;
+  const start = await page.locator(".blk.is-current .w").nth(3).boundingBox();
   await page.mouse.move(start.x + 4, start.y + 6);
   await page.mouse.down();
   await page.waitForTimeout(450);
-  await page.mouse.move(start.x + 60, start.y + 120, { steps: 8 });
+  await page.mouse.move(start.x + 60, start.y + 140, { steps: 8 });
   await page.waitForTimeout(250);
-  await shot("reader-text-scrub");
+  await phone.shot("reader-text-scrub");
   await page.mouse.up();
   await page.waitForTimeout(400);
 
-  // Settings sheet (listening + reading tabs)
   await page.getByRole("button", { name: "Pause" }).click();
-  await page.getByRole("button", { name: /^Voice:/ }).click();
+  await page.getByRole("button", { name: "Reading settings" }).click();
   await page.getByRole("dialog").waitFor();
-  await page.getByRole("dialog").getByText("Heart").waitFor();
   await page.waitForTimeout(300);
-  await shot("settings-listening");
-  await page.getByRole("radio", { name: "Reading" }).click();
-  await page.waitForTimeout(200);
-  await shot("settings-reading");
+  await phone.shot("settings-reading");
   await page.keyboard.press("Escape");
 
-  // Dark theme: the brand's primary mood
-  await setSettings(page, { theme: "dark" });
+  await patchSettings(page, { theme: "dark" });
   await page.emulateMedia({ colorScheme: "dark" });
-  await page.goto(`${server.url}/`);
-  await page.waitForSelector("article");
-  await page.waitForTimeout(300);
-  await shot("library-dark");
+  await openAlice(phone);
+  await phone.shot("reader-dark-playing");
 
-  await openReader(page, { play: false });
-  await shot("reader-dark");
-  await page.getByRole("button", { name: "Play" }).click();
-  await page.waitForSelector('button[aria-label="Pause"]:not([aria-busy])');
-  await page.waitForTimeout(1400);
-  await shot("reader-dark-playing");
+  await page.emulateMedia({ colorScheme: "light" });
+  await patchSettings(page, { theme: "sepia", font: "sans" });
+  await openAlice(phone, { play: false });
+  await phone.shot("reader-sepia-sans");
+  await phone.context.close();
+}
+
+// ---- A phone with only standard voices: the voice tip ------------------------------------
+{
+  const phone = await newPhone("standard-voices", { voices: "standard" });
+  const { page } = phone;
+  await phone.go("/", "&demo=1");
+  await page.waitForSelector("article");
+  await patchSettings(page, READING);
+  await openAlice(phone, { play: false });
+  await phone.shot("voice-tip-banner");
 
   await page.getByRole("button", { name: /^Voice:/ }).click();
-  await page.getByRole("dialog").getByText("Heart").waitFor();
+  await page.getByRole("dialog").getByText("Best available").waitFor();
   await page.waitForTimeout(300);
-  await shot("settings-dark");
-  await page.keyboard.press("Escape");
+  await phone.shot("settings-listening");
+  await phone.context.close();
+}
 
-  // Sepia + sans, to check the other theme/font combination
-  await setSettings(page, { theme: "sepia", font: "sans" });
-  await openReader(page, { play: false });
-  await shot("reader-sepia-sans");
+// ---- First run: empty library, then a file being analysed ----------------------------
+{
+  const phone = await newPhone("empty", { hold: true });
+  const { page } = phone;
+  await phone.go("/");
+  await page.getByText("Your library is empty").waitFor();
+  await patchSettings(page, { ...READING, homeScreenTipDismissed: false }); // first run in Safari: suggest Add to Home Screen
+  await phone.go("/");
+  await page.getByText("Your library is empty").waitFor();
+  await page.waitForTimeout(300);
+  await phone.shot("library-empty");
 
-  await setSettings(page, { theme: "system", font: "serif" });
-  await context.close();
+  const text = Array.from({ length: 40 }, (_, i) => `## Section ${i + 1}\n\nSome words to read aloud in section ${i + 1}.\n`).join("\n");
+  await page.locator('input[type="file"]').setInputFiles({ name: "Quarterly report.md", mimeType: "text/markdown", buffer: Buffer.from(text) });
+  await page.getByText("Analysing structure…").waitFor();
+  await page.waitForTimeout(300);
+  await phone.shot("library-upload");
+  await phone.context.close();
 }
 
 await browser.close();
@@ -145,5 +147,5 @@ if (errors.length) {
   console.error("Page errors:\n" + errors.join("\n"));
   process.exitCode = 1;
 } else {
-  console.log(`Screenshots written to ${outDir}`);
+  console.log(`Screenshots written to ${outDir}: ${readdirSync(outDir).filter((f) => f.endsWith(".png")).sort().join(", ")}`);
 }

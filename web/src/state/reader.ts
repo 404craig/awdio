@@ -1,12 +1,13 @@
 import { create } from "zustand";
-import type { Document } from "../api";
-import type { BufferingReason } from "../audio/engine";
-import { engine } from "../audio/instance";
+import { speech } from "../audio/instance";
+import type { BufferingReason } from "../audio/speech";
 import { positionToOrdinal, type Position } from "../audio/timeline";
-import { buildDocIndex, type DocIndex } from "../lib/docIndex";
+import { buildDocIndex, charsBefore, type DocIndex } from "../lib/docIndex";
 import { nextCycleSpeed, stepSpeed } from "../lib/format";
+import type { Document, Progress } from "../types";
 import { useSettings } from "./settings";
 import { useUi } from "./ui";
+import { activeVoice, platformVoice, useVoices } from "./voices";
 
 interface ReaderState {
   index: DocIndex | null;
@@ -48,80 +49,85 @@ const get = useReader.getState;
 export const selectOrdinal = (s: ReaderState) => (s.index ? positionToOrdinal(s.index.blocks, s.position) : 0);
 export const selectPlaybackPage = (s: ReaderState) => (s.index ? s.index.pageOfBlock[s.position.blockIndex] : 0);
 
-/** Opens a document in the reader and wires the engine to the store. Returns the teardown. */
-export function openReader(doc: Document, opts: { restart?: boolean } = {}): () => void {
+const currentPlatformVoice = () => platformVoice(activeVoice()?.id);
+
+/** Opens a document in the reader and wires the speech engine to the store. Returns the teardown. */
+export function openReader(doc: Document, progress: Progress | null, opts: { restart?: boolean } = {}): () => void {
   const index = buildDocIndex(doc);
-  const start: Position = doc.progress && !opts.restart
-    ? {
-        blockIndex: Math.min(doc.progress.blockIndex, index.blocks.length - 1),
-        wordIndex: doc.progress.wordIndex,
-      }
-    : { blockIndex: 0, wordIndex: 0 };
+  const start: Position =
+    progress && !opts.restart
+      ? { blockIndex: Math.min(progress.blockIndex, index.blocks.length - 1), wordIndex: progress.wordIndex }
+      : { blockIndex: 0, wordIndex: 0 };
   set({ ...initial, index, position: start, viewPage: index.pageOfBlock[start.blockIndex] });
 
   const offs = [
-    engine.on("position", (position) => set({ position })),
-    engine.on("state", ({ playing }) => set({ playing })),
-    engine.on("buffering", ({ reason }) => set({ buffering: reason })),
-    engine.on("finished", () => useUi.getState().showToast("Finished. Nicely done.")),
-    engine.on("error", (e) => {
-      const ui = useUi.getState();
-      if (e.code === "engine_error") {
-        ui.showToast("The voice couldn't read this paragraph. Try again or pick another voice.", "error");
-      } else {
-        ui.showToast(e.message, "error");
-      }
-    }),
+    speech.on("position", (position) => set({ position })),
+    speech.on("state", ({ playing }) => set({ playing })),
+    speech.on("buffering", ({ reason }) => set({ buffering: reason })),
+    speech.on("finished", () => useUi.getState().showToast("Finished. Nicely done.")),
+    speech.on("error", (e) => useUi.getState().showToast(e.message, "error")),
     useSettings.subscribe((s, prev) => {
-      if (s.settings.speed !== prev.settings.speed) engine.setRate(s.settings.speed);
-      if (s.settings.engine !== prev.settings.engine || s.settings.voiceId !== prev.settings.voiceId) {
-        engine.setVoice({ engine: s.settings.engine, voiceId: s.settings.voiceId });
-      }
+      if (s.settings.speed !== prev.settings.speed) speech.setRate(s.settings.speed);
+      if (s.settings.voiceURI !== prev.settings.voiceURI) speech.setVoice(currentPlatformVoice());
+    }),
+    // A newly installed (better) voice takes over unless the user picked one explicitly.
+    useVoices.subscribe((s, prev) => {
+      if (s.voices !== prev.voices) speech.setVoice(currentPlatformVoice());
     }),
   ];
 
-  const { settings } = useSettings.getState();
-  engine.load(
-    { id: doc.id, title: doc.title, blocks: index.blocks },
-    {
-      voice: { engine: settings.engine, voiceId: settings.voiceId },
-      rate: settings.speed,
-      start,
-      secondsPerWord: doc.wordCount > 0 ? doc.estimatedSeconds / doc.wordCount : undefined,
-    },
+  speech.load(
+    { title: doc.title, blocks: index.blocks },
+    { start, rate: useSettings.getState().settings.speed, voice: currentPlatformVoice() },
   );
 
   return () => {
     offs.forEach((off) => off());
-    engine.unload();
+    speech.unload();
     set(initial);
   };
 }
 
 const markSeek = () => set({ attached: true, seekSeq: get().seekSeq + 1 });
 
+/** Why playback can't start on this device, or null when it can. */
+function unavailableReason(): string | null {
+  const { status, voices } = useVoices.getState();
+  if (status === "unsupported") return "This browser can't read aloud. Try Safari on iPhone.";
+  if (status === "ready" && voices.length === 0) return "No voices available on this device.";
+  return null;
+}
+
 export const player = {
-  toggle: () => engine.toggle(),
+  /** Play/pause. Speaks synchronously inside the tap, as iOS requires. */
+  toggle() {
+    if (speech.playing) return speech.pause();
+    useVoices.getState().refresh();
+    const reason = unavailableReason();
+    if (reason) return useUi.getState().showToast(reason, "error");
+    speech.setVoice(currentPlatformVoice());
+    speech.play();
+  },
   /** Seek to a word. `play` starts playback (called inside the gesture for iOS). */
   seekTo(pos: Position, opts: { play?: boolean } = {}) {
     set({ attached: true });
-    engine.seek(pos.blockIndex, pos.wordIndex);
-    if (opts.play && !engine.playing) engine.play();
+    speech.seek(pos.blockIndex, pos.wordIndex);
+    if (opts.play && !speech.playing && !unavailableReason()) speech.play();
     markSeek();
   },
   skip(seconds: number) {
     set({ attached: true });
-    engine.skip(seconds);
+    speech.skip(seconds);
     markSeek();
   },
   next() {
     set({ attached: true });
-    engine.nextBlock();
+    speech.nextBlock();
     markSeek();
   },
   prev() {
     set({ attached: true });
-    engine.prevBlock();
+    speech.prevBlock();
     markSeek();
   },
   cycleSpeed() {
@@ -132,6 +138,9 @@ export const player = {
     const { settings, update } = useSettings.getState();
     void update({ speed: stepSpeed(settings.speed, dir) });
   },
-  secondsPerWord: () => engine.secondsPerWord(),
-  pause: () => engine.pause(),
+  /** Estimated listening time from `ordinal` to the end at the current speed. */
+  secondsLeft(index: DocIndex, ordinal: number, speed: number): number {
+    return (index.totalChars - charsBefore(index, ordinal)) / (speech.charsPerSecond() * speed);
+  },
+  pause: () => speech.pause(),
 };

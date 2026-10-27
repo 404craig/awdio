@@ -1,54 +1,73 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
-import { getDocument, isApiError, type Document } from "../api";
 import { BackToReading, ScrubLabel } from "../components/reader/Overlays";
 import { Player } from "../components/reader/Player";
 import { ReaderColumn } from "../components/reader/ReaderColumn";
 import { TopBar } from "../components/reader/TopBar";
+import { VoiceTipBanner } from "../components/reader/VoiceTipBanner";
+import { getDocument, getProgress, updateDocument } from "../data/db";
 import { useProgressSaver } from "../hooks/useProgressSaver";
 import { useReaderShortcuts } from "../hooks/useReaderShortcuts";
 import { pageName } from "../lib/docIndex";
+import { useLibrary } from "../state/library";
 import { openReader, useReader } from "../state/reader";
-import { useSettings } from "../state/settings";
 import { useUi } from "../state/ui";
+import type { Document, Progress } from "../types";
+
+interface Loaded {
+  doc: Document;
+  progress: Progress | null;
+}
+
+async function loadForReading(id: string): Promise<Loaded | null> {
+  const [doc, progress] = await Promise.all([getDocument(id), getProgress(id)]);
+  if (!doc) return null;
+  const lastOpenedAt = new Date().toISOString();
+  void updateDocument(id, { lastOpenedAt }).catch(() => {});
+  useLibrary.getState().patch(id, { lastOpenedAt });
+  return { doc, progress };
+}
 
 export function Reader() {
   const { id = "" } = useParams();
   const restart = (useLocation().state as { restart?: boolean } | null)?.restart === true;
-  const [doc, setDoc] = useState<Document | null>(null);
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
   const index = useReader((s) => s.index);
-  const loadVoices = useSettings((s) => s.loadVoices);
+  const doc = loaded?.doc;
 
   useEffect(() => {
-    const ac = new AbortController();
-    setDoc(null);
+    let cancelled = false;
+    setLoaded(null);
     setError(null);
-    getDocument(id, ac.signal)
-      .then(setDoc)
-      .catch((e: unknown) => {
-        if (ac.signal.aborted) return;
-        setError(isApiError(e) && e.status === 404 ? "This document no longer exists." : "Couldn't open this document.");
-      });
-    return () => ac.abort();
+    loadForReading(id)
+      .then((result) => {
+        if (cancelled) return;
+        if (result) setLoaded(result);
+        else setError("This document is no longer on this device.");
+      })
+      .catch(() => !cancelled && setError("Couldn't open this document."));
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   useEffect(() => {
-    if (!doc) return;
-    const close = openReader(doc, { restart });
+    if (!loaded) return;
+    const { doc, progress } = loaded;
+    const close = openReader(doc, progress, { restart });
     const index = useReader.getState().index;
-    if (!restart && doc.progress && doc.progress.wordOrdinal > 0 && index) {
+    if (!restart && progress && progress.wordOrdinal > 0 && index) {
       const page = index.pages[index.pageOfBlock[useReader.getState().position.blockIndex]];
       useUi.getState().showToast(`Resumed at ${pageName(page).replace(/^Page/, "page")}`);
     }
     return close;
-  }, [doc]);
+  }, [loaded]);
 
   useEffect(() => {
-    void loadVoices();
     window.history.scrollRestoration = "manual";
-  }, [loadVoices]);
+  }, []);
 
   useProgressSaver(doc?.id);
   useReaderShortcuts();
@@ -79,6 +98,7 @@ export function Reader() {
       <main>
         <ReaderColumn key={index.doc.id} index={index} />
       </main>
+      <VoiceTipBanner />
       <BackToReading />
       <ScrubLabel index={index} />
       <Player index={index} />

@@ -1,5 +1,5 @@
 import { Monitor, Moon, Sun, Coffee } from "lucide-react";
-import type { ReadingFont, Theme } from "../../api";
+import type { ReadingFont, Theme } from "../../types";
 import { formatSpeed, SPEED_MAX, SPEED_MIN, SPEED_STEP } from "../../lib/format";
 import { useSettings } from "../../state/settings";
 import { useUi, type SettingsTab } from "../../state/ui";

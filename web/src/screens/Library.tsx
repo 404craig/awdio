@@ -5,6 +5,8 @@ import { DocumentCard } from "../components/library/DocumentCard";
 import { UploadCard } from "../components/library/UploadCard";
 import { Mark } from "../components/brand/Mark";
 import { Wordmark } from "../components/brand/Wordmark";
+import { HomeScreenTip } from "../components/tips/HomeScreenTip";
+import { useListeningTime } from "../hooks/useListeningTime";
 import { formatDuration } from "../lib/format";
 import { ACCEPTED_EXTENSIONS, useLibrary } from "../state/library";
 import { useUi } from "../state/ui";
@@ -55,6 +57,7 @@ export function Library() {
   const openSettings = useUi((s) => s.openSettings);
   const input = useRef<HTMLInputElement>(null);
   const dragging = useFileDrop((files) => files.forEach((f) => void upload(f)));
+  const listeningTime = useListeningTime();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -62,7 +65,7 @@ export function Library() {
   }, [load]);
 
   const choose = () => input.current?.click();
-  const total = docs.reduce((sum, d) => sum + d.estimatedSeconds, 0);
+  const total = listeningTime(docs.reduce((sum, d) => sum + d.charCount, 0));
   const empty = loaded && !loadError && docs.length === 0 && uploads.length === 0;
 
   return (
@@ -82,6 +85,7 @@ export function Library() {
       </header>
 
       <main className="mx-auto max-w-[1080px] px-5 pb-20 pt-10 sm:px-8 sm:pt-16">
+        <HomeScreenTip />
         {!empty && (
           <div className="mb-7 sm:mb-9">
             <h1 className="text-[36px] font-light leading-tight tracking-[-0.03em] sm:text-[44px]">Library</h1>

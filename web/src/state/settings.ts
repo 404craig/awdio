@@ -1,92 +1,70 @@
 import { create } from "zustand";
-import { getSettings, getVoices, putSettings, type EngineInfo, type Settings, type SettingsUpdate } from "../api";
+import { loadSettings, saveSettings } from "../data/db";
+import type { Settings } from "../types";
 
-const STORAGE_KEY = "awdio.settings";
+/** Mirrored here so index.html can apply theme and reading prefs before first paint. */
+const MIRROR_KEY = "awdio.settings";
 
 export const DEFAULT_SETTINGS: Settings = {
-  engine: "kokoro",
-  voiceId: "af_heart",
+  voiceURI: null,
   speed: 1,
   font: "serif",
   textSize: 19,
   theme: "system",
   autoScroll: true,
+  voiceTipDismissed: false,
+  homeScreenTipDismissed: false,
 };
 
-function cached(): Settings {
+const withDefaults = (partial: Partial<Settings> | null): Settings => ({ ...DEFAULT_SETTINGS, ...(partial ?? {}) });
+
+function mirrored(): Settings {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) } : DEFAULT_SETTINGS;
+    const raw = localStorage.getItem(MIRROR_KEY);
+    return withDefaults(raw ? (JSON.parse(raw) as Partial<Settings>) : null);
   } catch {
     return DEFAULT_SETTINGS;
   }
 }
 
-function persist(settings: Settings): void {
+function mirror(settings: Settings): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    localStorage.setItem(MIRROR_KEY, JSON.stringify(settings));
   } catch {
-    /* private mode */
+    /* private mode or storage full: IndexedDB still has it */
   }
 }
 
 interface SettingsState {
   settings: Settings;
   loaded: boolean;
-  engines: EngineInfo[] | null;
   load(): Promise<void>;
-  loadVoices(): Promise<void>;
-  /** Optimistic: applies locally, then PUTs; reverts on failure. */
-  update(patch: SettingsUpdate): Promise<void>;
+  update(patch: Partial<Settings>): Promise<void>;
 }
 
 export const useSettings = create<SettingsState>((set, get) => ({
-  settings: cached(),
+  settings: mirrored(),
   loaded: false,
-  engines: null,
 
   async load() {
     try {
-      const settings = await getSettings();
-      persist(settings);
+      const stored = await loadSettings();
+      const settings = stored ? withDefaults(stored) : get().settings;
+      mirror(settings);
       set({ settings, loaded: true });
     } catch {
       set({ loaded: true });
     }
   },
 
-  async loadVoices() {
-    try {
-      const { engines } = await getVoices();
-      set({ engines });
-    } catch {
-      /* the sheet shows its own empty state */
-    }
-  },
-
   async update(patch) {
-    const before = get().settings;
-    const next = { ...before, ...patch };
-    set({ settings: next });
-    persist(next);
+    const settings = { ...get().settings, ...patch };
+    set({ settings });
+    mirror(settings);
     try {
-      const saved = await putSettings(patch);
-      // Keep any newer local edits made while this request was in flight.
-      const current = get().settings;
-      const merged = { ...saved, ...diff(next, current) };
-      set({ settings: merged });
-      persist(merged);
+      await saveSettings(settings);
     } catch {
-      set({ settings: before });
-      persist(before);
+      /* the mirror keeps it for this device; nothing else to do */
     }
   },
 }));
-
-function diff(base: Settings, current: Settings): Partial<Settings> {
-  const out: Partial<Settings> = {};
-  (Object.keys(current) as (keyof Settings)[]).forEach((k) => {
-    if (current[k] !== base[k]) Object.assign(out, { [k]: current[k] });
-  });
-  return out;
-}

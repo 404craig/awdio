@@ -4,7 +4,8 @@ import { useLibrary, type Upload } from "../../state/library";
 export function UploadCard({ upload }: { upload: Upload }) {
   const dismiss = useLibrary((s) => s.dismissUpload);
   const failed = upload.phase === "error";
-  const label = failed ? upload.error : upload.phase === "uploading" ? `Uploading… ${Math.round(upload.progress * 100)}%` : "Analysing structure…";
+  const percent = upload.progress === null ? "" : ` ${Math.round(upload.progress * 100)}%`;
+  const label = failed ? upload.error : upload.phase === "reading" ? "Reading file…" : `Analysing structure…${percent}`;
   return (
     <div
       className={`animate-rise-in flex items-center gap-4 rounded-card border bg-surface p-4 sm:p-5 ${failed ? "border-danger/30" : "border-hairline"}`}
@@ -23,8 +24,8 @@ export function UploadCard({ upload }: { upload: Upload }) {
         {!failed && (
           <div className="mt-2.5 h-[3px] overflow-hidden rounded-full bg-track">
             <div
-              className={`h-full rounded-full bg-accent transition-[width] duration-300 ${upload.phase === "analysing" ? "animate-pulse" : ""}`}
-              style={{ width: `${Math.max(4, upload.progress * 100)}%` }}
+              className={`h-full rounded-full bg-accent transition-[width] duration-300 ${upload.progress === null ? "animate-pulse" : ""}`}
+              style={{ width: `${upload.progress === null ? (upload.phase === "reading" ? 12 : 40) : Math.max(4, upload.progress * 100)}%` }}
             />
           </div>
         )}

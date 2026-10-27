@@ -1,32 +1,27 @@
 import { create } from "zustand";
-import {
-  cancelPrepare,
-  deleteDocument,
-  getPrepare,
-  isApiError,
-  listDocuments,
-  renameDocument,
-  startPrepare,
-  uploadDocument,
-  type DocumentSummary,
-  type PrepareStatus,
-} from "../api";
-import { useSettings } from "./settings";
+import { addDocument, deleteDocument, listDocuments, listProgress, newDocumentId, requestPersistence, updateDocument } from "../data/db";
+import { parseInWorker } from "../parsing/client";
+import { ACCEPTED_EXTENSIONS, MAX_FILE_BYTES } from "../parsing/index";
+import { ParseError, type StructuredDocument } from "../parsing/types";
+import type { Document, DocumentSummary, Progress } from "../types";
 
-export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
-export const ACCEPTED_EXTENSIONS = [".pdf", ".epub", ".docx", ".txt", ".md", ".markdown"];
-const PREPARE_POLL_MS = 2000;
+export { ACCEPTED_EXTENSIONS };
+
+export interface LibraryItem extends DocumentSummary {
+  progress: Progress | null;
+}
 
 export interface Upload {
   id: number;
   name: string;
-  phase: "uploading" | "analysing" | "error";
-  progress: number;
+  phase: "reading" | "analysing" | "error";
+  /** 0–1 when the parser can tell, otherwise null. */
+  progress: number | null;
   error?: string;
 }
 
 interface LibraryState {
-  docs: DocumentSummary[];
+  docs: LibraryItem[];
   loaded: boolean;
   loadError: string | null;
   uploads: Upload[];
@@ -35,63 +30,40 @@ interface LibraryState {
   dismissUpload(id: number): void;
   rename(id: string, title: string): Promise<void>;
   remove(id: string): Promise<void>;
-  prepare(id: string): Promise<void>;
-  stopPrepare(id: string): Promise<void>;
+  /** Keeps the list in step with the reader (opened time, position) without a reload. */
+  patch(id: string, patch: Partial<LibraryItem>): void;
 }
 
 let uploadSeq = 0;
-const polling = new Set<string>();
 
-export function sortDocuments(docs: DocumentSummary[]): DocumentSummary[] {
+function sortDocuments<T extends DocumentSummary>(docs: T[]): T[] {
   return [...docs].sort(
     (a, b) => (b.lastOpenedAt ?? "").localeCompare(a.lastOpenedAt ?? "") || b.createdAt.localeCompare(a.createdAt),
   );
 }
 
-function uploadErrorMessage(e: unknown): string {
-  if (isApiError(e)) {
-    if (e.code === "unsupported_type" || e.status === 415) return "That file type isn't supported. Try PDF, EPUB, DOCX, TXT or Markdown.";
-    if (e.code === "no_text") return "No readable text found. Scanned PDFs aren't supported yet.";
-    if (e.code === "parse_error") return "This file couldn't be read. It may be damaged or password-protected.";
-    if (e.code === "file_too_large" || e.status === 413) return "That file is larger than 50 MB.";
-    return e.message;
-  }
-  return "Upload failed";
+export function toDocument(parsed: StructuredDocument, fileName: string, id = newDocumentId()): Document {
+  return {
+    id,
+    title: parsed.title,
+    sourceType: parsed.sourceType,
+    fileName,
+    wordCount: parsed.wordCount,
+    charCount: parsed.charCount,
+    blockCount: parsed.blockCount,
+    pageCount: parsed.pages.length,
+    createdAt: new Date().toISOString(),
+    lastOpenedAt: null,
+    pages: parsed.pages,
+  };
 }
 
+const uploadErrorMessage = (e: unknown) =>
+  e instanceof ParseError ? e.message : "This file couldn't be added. Your phone may be out of storage.";
+
 export const useLibrary = create<LibraryState>((set, get) => {
-  const patchDoc = (id: string, patch: Partial<DocumentSummary>) =>
+  const patchDoc = (id: string, patch: Partial<LibraryItem>) =>
     set({ docs: get().docs.map((d) => (d.id === id ? { ...d, ...patch } : d)) });
-
-  const voice = () => {
-    const { engine, voiceId } = useSettings.getState().settings;
-    return { engine, voiceId };
-  };
-
-  const poll = (id: string) => {
-    if (polling.has(id)) return;
-    polling.add(id);
-    const tick = async () => {
-      const doc = get().docs.find((d) => d.id === id);
-      if (!doc || doc.prepare.status !== "running") {
-        polling.delete(id);
-        return;
-      }
-      try {
-        const { engine, voiceId } = voice();
-        patchDoc(id, { prepare: await getPrepare(id, engine, voiceId) });
-      } catch {
-        /* transient; try again */
-      }
-      setTimeout(() => void tick(), PREPARE_POLL_MS);
-    };
-    setTimeout(() => void tick(), PREPARE_POLL_MS);
-  };
-
-  const setPrepare = (id: string, prepare: PrepareStatus) => {
-    patchDoc(id, { prepare });
-    if (prepare.status === "running") poll(id);
-  };
 
   return {
     docs: [],
@@ -101,29 +73,29 @@ export const useLibrary = create<LibraryState>((set, get) => {
 
     async load() {
       try {
-        const docs = sortDocuments(await listDocuments());
-        set({ docs, loaded: true, loadError: null });
-        docs.filter((d) => d.prepare.status === "running").forEach((d) => poll(d.id));
-      } catch (e) {
-        set({ loaded: true, loadError: isApiError(e) ? e.message : "Couldn't load your library" });
+        const [summaries, progress] = await Promise.all([listDocuments(), listProgress()]);
+        const docs = summaries.map((d) => ({ ...d, progress: progress.get(d.id) ?? null }));
+        set({ docs: sortDocuments(docs), loaded: true, loadError: null });
+      } catch {
+        set({ loaded: true, loadError: "Couldn't open your library on this device." });
       }
     },
 
     async upload(file) {
       const id = ++uploadSeq;
-      const update = (patch: Partial<Upload>) =>
-        set({ uploads: get().uploads.map((u) => (u.id === id ? { ...u, ...patch } : u)) });
-      set({ uploads: [...get().uploads, { id, name: file.name, phase: "uploading", progress: 0 }] });
-      if (file.size > MAX_UPLOAD_BYTES) {
+      const update = (patch: Partial<Upload>) => set({ uploads: get().uploads.map((u) => (u.id === id ? { ...u, ...patch } : u)) });
+      set({ uploads: [...get().uploads, { id, name: file.name, phase: "reading", progress: null }] });
+      if (file.size > MAX_FILE_BYTES) {
         update({ phase: "error", error: "That file is larger than 50 MB." });
         return;
       }
       try {
-        const doc = await uploadDocument(file, {
-          onProgress: (progress) => update({ progress }),
-          onUploaded: () => update({ phase: "analysing", progress: 1 }),
-        });
-        set({ uploads: get().uploads.filter((u) => u.id !== id), docs: sortDocuments([doc, ...get().docs]) });
+        const parsed = await parseInWorker(file, (p) => update({ phase: p.phase, progress: p.fraction }));
+        const doc = toDocument(parsed, file.name);
+        await addDocument(doc);
+        void requestPersistence();
+        const { pages: _pages, ...summary } = doc;
+        set({ uploads: get().uploads.filter((u) => u.id !== id), docs: sortDocuments([{ ...summary, progress: null }, ...get().docs]) });
       } catch (e) {
         update({ phase: "error", error: uploadErrorMessage(e) });
       }
@@ -135,11 +107,11 @@ export const useLibrary = create<LibraryState>((set, get) => {
 
     async rename(id, title) {
       const before = get().docs.find((d) => d.id === id);
-      if (!before || !title.trim() || title.trim() === before.title) return;
-      patchDoc(id, { title: title.trim() });
+      const next = title.trim();
+      if (!before || !next || next === before.title) return;
+      patchDoc(id, { title: next });
       try {
-        const saved = await renameDocument(id, title.trim());
-        patchDoc(id, { title: saved.title });
+        await updateDocument(id, { title: next });
       } catch {
         patchDoc(id, { title: before.title });
       }
@@ -155,27 +127,9 @@ export const useLibrary = create<LibraryState>((set, get) => {
       }
     },
 
-    async prepare(id) {
-      const { engine, voiceId } = voice();
-      const doc = get().docs.find((d) => d.id === id);
-      if (doc) patchDoc(id, { prepare: { ...doc.prepare, status: "running", engine, voiceId } });
-      try {
-        setPrepare(id, await startPrepare(id, engine, voiceId));
-      } catch (e) {
-        patchDoc(id, {
-          prepare: { status: "error", done: 0, total: doc?.blockCount ?? 0, error: isApiError(e) ? e.message : "Failed" },
-        });
-      }
-    },
-
-    async stopPrepare(id) {
-      try {
-        await cancelPrepare(id);
-        const doc = get().docs.find((d) => d.id === id);
-        if (doc) patchDoc(id, { prepare: { ...doc.prepare, status: "idle" } });
-      } catch {
-        /* leave the ring; the next poll corrects it */
-      }
+    patch(id, patch) {
+      patchDoc(id, patch);
+      if (patch.lastOpenedAt !== undefined) set({ docs: sortDocuments(get().docs) });
     },
   };
 });

@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:mock": "vite --mode mock",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "icons": "node scripts/icons.mjs",
-    "screenshots": "node scripts/screenshots.mjs",
-    "perf": "node scripts/perf.mjs"
+    "perf": "vite build && node scripts/perf.mjs",
+    "screenshots": "vite build && node scripts/screenshots.mjs",
+    "e2e": "vite build && node e2e/on-device.mjs",
+    "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

@@ -1,5 +1,5 @@
 import { Fragment, memo } from "react";
-import type { Block, Page } from "../../api";
+import type { Block, Page } from "../../types";
 import { registerBlock } from "./highlight";
 
 function tagFor(block: Block): "h1" | "h2" | "h3" | "h4" | "blockquote" | "p" {

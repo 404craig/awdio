@@ -12,11 +12,11 @@ export function EmptyState({ onChoose, dragging }: { onChoose(): void; dragging:
       </div>
       <p className="label mt-8">Your library is empty</p>
       <h2 className="mt-3 max-w-[320px] text-balance text-[26px] font-light leading-tight tracking-[-0.02em]">Add something to listen to.</h2>
-      <p className="mt-3 max-w-[300px] text-pretty text-[15px] leading-relaxed text-muted">Drop a PDF, EPUB, DOCX or text file here and awdio will read it to you.</p>
+      <p className="mt-3 max-w-[300px] text-pretty text-[15px] leading-relaxed text-muted">Choose a PDF, EPUB, DOCX or text file and awdio will read it to you.</p>
       <button type="button" className="btn-primary mt-8" onClick={onChoose}>
         Choose a file
       </button>
-      <p className="label mt-5">Up to 50 MB · Stays on your server</p>
+      <p className="label mt-5">Up to 50 MB · Stays on this device</p>
     </div>
   );
 }

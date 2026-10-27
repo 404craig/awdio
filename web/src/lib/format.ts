@@ -19,7 +19,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   md: "MD",
 };
 
-/** Server percent is wordOrdinal / wordCount × 100, so the last word reads just under 100. */
+/** Percent is wordOrdinal / wordCount × 100, so the last word reads just under 100. */
 export const FINISHED_PERCENT = 99.5;
 
 /** Tap-cycle speeds for the speed chip (full 0.5–3 range lives in Settings). */

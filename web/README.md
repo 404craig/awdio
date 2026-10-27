@@ -1,27 +1,33 @@
 # awdio · web
 
-React 18 + TypeScript (strict) + Tailwind v3 single-page app for awdio. Talks to the
-server only through the contract in [`docs/API.md`](../docs/API.md).
+React 18 + TypeScript (strict) + Tailwind v3 progressive web app. Everything runs on the
+phone: parsing in a Web Worker, storage in IndexedDB, speech with the Web Speech API. No
+server, no API. Designed for the iPhone (393 × 852); larger screens must just not break.
 
 ## Scripts
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Vite on :5173, proxies `/api` to the real server on :8000 |
-| `npm run dev:mock` | Vite with an in-process mock API (no server needed) |
-| `npm run build` | Typecheck, then build to `web/dist` (served by the server in production) |
-| `npm run preview` | Serve the built `dist` |
+| `npm run dev` | Vite on :5173 |
+| `npm run build` | Typecheck, then build to `dist/` (`BASE_PATH=/awdio/` for GitHub Pages) |
+| `npm run preview` | Serve the built `dist/` |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Vitest unit tests (timeline maths, LRU, formatting) |
-| `npm run screenshots` | Playwright captures of key screens → `screenshots/` (starts its own mock) |
-| `npm run perf` | Playwright budget checks on the 25k-word mock book (starts its own mock) |
-| `npm run icons` | Regenerates the PWA icons in `public/icons/` |
+| `npm test` | Vitest: parsers, structure, sentences, estimator, voices, timeline, IndexedDB layer, speech engine |
+| `npm run perf` | Build, then Playwright budget checks on the 26k-word demo book at phone size |
+| `npm run screenshots` | Build, then phone screenshots of the key screens → `screenshots/` |
+| `npm run e2e` | Build, then `e2e/on-device.mjs`: upload a PDF through the UI, play, scrub, reload, resume; zero-voices check |
+| `npm run icons` | Regenerate the PWA icons in `public/icons/` |
 
-Mock knobs (`dev:mock` only): `MOCK_PIN=1234` turns on the access PIN, `MOCK_COLD=8` makes
-the voice model "load" for 8 s (503 `engine_not_ready`), `MOCK_LATENCY=300` sets the
-first-synthesis delay in ms. The mock serves three documents (one ≈ 60 pages / 25k words),
-silent WAV block audio whose length is `wordCount × 0.38 s` with even word timings, voices,
-settings, progress and a prepare job that advances over time.
+The Playwright scripts use the globally installed `playwright` package and its Chromium.
+
+URL switches (work in dev and in production):
+
+- `?demo=1` adds three public-domain sample documents (`public/demo/`) to IndexedDB.
+- `?fakeSpeech=1` replaces `speechSynthesis` with `src/audio/fakeSpeech.ts`, which "speaks" by
+  timing characters and sends word boundaries. Options: `fakeCps=40` (characters per second),
+  `fakeBoundaries=0` (no boundary events, to exercise the estimator), `fakeVoices=standard`
+  (no Enhanced/Premium voices, shows the voice tip) or `fakeVoices=none`. Scripts can set
+  `window.__awdioFakeSpeech = { … }` before load instead.
 
 ## Brand
 
@@ -35,31 +41,40 @@ are generated from `public/brand/mark.svg` by `npm run icons`.
 
 ```
 src/
-  api/          types.ts (mirrors docs/API.md), client.ts (fetch + ApiError + 401 locked), index.ts (one function per endpoint)
-  audio/        engine.ts (AudioEngine), timeline.ts (pure maths), lru.ts, silence.ts, instance.ts (singleton wiring)
-  state/        zustand stores: settings, library, reader (+ player actions), ui (sheet, toast)
+  types.ts      the on-device data model (docs/DATA.md)
+  parsing/      pdf/epub/docx/html/text/markdown parsers, structure.ts, worker.ts + client.ts (Web Worker), testing/fixtures.ts
+  data/         db.ts: IndexedDB (documents, structures, progress, settings), persistent storage
+  audio/        speech.ts (SpeechEngine), sentences.ts, estimator.ts, voices.ts, timeline.ts, lockScreen.ts,
+                silence.ts, fakeSpeech.ts, instance.ts (the app's engine)
+  state/        zustand stores: settings, voices, library, reader (+ player actions), ui (sheet, toast)
   lib/          docIndex.ts (flat lookups over a document), format.ts
-  hooks/        theme, progress saving, keyboard shortcuts, focus trap, media queries
-  components/   brand/ (inline wordmark + wave mark from public/brand), reader/ (column, pages, player, timeline, top bar, overlays), library/, settings/, shared primitives
-  screens/      Library, Reader, Unlock
-mock/           Vite middleware implementing the API for development
-scripts/        screenshots, perf, icons
+  hooks/        theme, progress saving, listening time, keyboard shortcuts, focus trap, media queries
+  components/   brand/, reader/ (column, pages, player, timeline, top bar, overlays, voice tip banner),
+                library/, settings/ (sheet, voice picker), tips/ (voice tip, Add to Home Screen), shared primitives
+  screens/      Library, Reader
+  demo/         seed.ts (?demo=1)
+scripts/        harness.mjs (preview server + phone Chromium), perf, screenshots, icons
+e2e/            on-device.mjs
 ```
 
-## How playback and follow-along work
+## How speech and follow-along work
 
-**AudioEngine** (`src/audio/engine.ts`) owns a single `HTMLAudioElement` (`preservesPitch`,
-`playbackRate` = speed). Each block's `BlockAudio` JSON and audio file are fetched as a Blob
-and swapped in via an object URL, so prefetching never touches the element. On open it
-fetches the current block on demand and prefetches the next three one at a time with
-`prefetch=true` (lower server priority). Blobs live in a 40-entry LRU. On `ended` the next
-block starts immediately. A `requestAnimationFrame` loop reads `currentTime` and
-binary-searches the block's timings; it only emits `position` when the word changes.
-Skips of ±15 s walk across block boundaries (estimating unsynthesised blocks from the
-measured seconds per word). The first `play()` runs inside the user gesture (iOS), priming the
-element with a tiny silent clip if audio isn't ready yet. A 503 `engine_not_ready` puts the
-engine in a "voice" buffering state, polls `/api/health` and retries. Media Session metadata,
-action handlers and position state are kept up to date.
+**SpeechEngine** (`src/audio/speech.ts`) speaks one `SpeechSynthesisUtterance` per sentence
+(`sentences.ts`) with the chosen voice, its language and `rate` = speed, and starts the next
+from `end`; titles and headings are followed by ~500 ms of silence. It keeps a reference to the
+active utterance and ignores events from cancelled ones. The spoken word comes from `boundary`
+events (`charIndex` → word via `estimator.ts`) when the voice sends them; otherwise a measured
+characters-per-second estimate animates the highlight. It never moves backwards and never past
+the sentence. Pause cancels speech and keeps the word; play, seek, speed and voice changes
+speak again from the current word. ±15 s skips convert seconds to characters with the
+estimator. The first `speak()` runs inside the play tap (iOS), together with a looping silent
+`<audio>` and Media Session metadata/handlers for the lock screen (`lockScreen.ts`). When the
+app becomes visible again it resumes speech that iOS dropped while locked.
+
+**Voices** (`src/audio/voices.ts`, `src/state/voices.ts`): grouped by language, British English
+first, Premium/Enhanced labelled "Better quality". `voiceURI: null` means "best available"
+(best en-GB, else en-US), so a newly installed better voice is used automatically; an explicit
+pick sticks. No voices → "No voices available on this device".
 
 **Reader** (`src/components/reader/`) renders each word as
 `<span data-b={block} data-w={word}>`. The highlight is imperative: `highlight.ts` keeps a map
@@ -73,5 +88,5 @@ scrollbar input detaches it, and "Back to reading" re-attaches. Tap a word to pl
 Press and hold for 350 ms, then drag, to scrub word by word with a floating page label.
 
 The timeline is word-ordinal based (docs/DECISIONS.md D3). Releasing a drag seeks to the
-start of the target block. Progress is saved at most every 5 s while playing, and
-immediately on pause, seek, tab hide and unmount.
+start of the target block. Progress is saved to IndexedDB at most every 5 s while playing,
+and immediately on pause, seek, app hide and unmount.

@@ -13,8 +13,7 @@ const BUBBLE_W = 264;
 export function Timeline({ index }: { index: DocIndex }) {
   const ordinal = useReader(selectOrdinal);
   const scrub = useReader((s) => s.scrub);
-  const voiceLoading = useReader((s) => s.buffering === "voice");
-  const slowAudio = useDelayedFlag(useReader((s) => s.buffering === "loading"), 1500);
+  const slowStart = useDelayedFlag(useReader((s) => s.buffering === "starting"), 1500);
   const speed = useSettings((s) => s.settings.speed);
   const trackRef = useRef<HTMLDivElement>(null);
   const [trackWidth, setTrackWidth] = useState(0);
@@ -23,7 +22,7 @@ export function Timeline({ index }: { index: DocIndex }) {
   const shown = scrub?.ordinal ?? ordinal;
   const fraction = shown / maxOrdinal;
   const page = index.pages[pageOfOrdinal(index, shown)];
-  const remaining = ((index.totalWords - shown) * player.secondsPerWord()) / speed;
+  const remaining = player.secondsLeft(index, shown, speed);
 
   const ordinalAt = (clientX: number) => {
     const r = trackRef.current!.getBoundingClientRect();
@@ -119,10 +118,10 @@ export function Timeline({ index }: { index: DocIndex }) {
       </div>
       <div className="-mt-1.5 flex items-center justify-between text-[12px] font-normal tabular-nums tracking-[0.02em] text-muted">
         <span>{formatPercent(fraction)}</span>
-        {voiceLoading || slowAudio ? (
+        {slowStart ? (
           <span className="flex items-center gap-1.5 text-accent-ink" role="status">
             <Mark animated className="h-2.5" />
-            {voiceLoading ? "Preparing voice…" : "Preparing audio…"}
+            Starting voice…
           </span>
         ) : (
           <span>{remaining > 1 ? `${formatDuration(remaining)} left` : "Done"}</span>

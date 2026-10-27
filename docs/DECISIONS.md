@@ -1,74 +1,76 @@
 # Decisions
 
-## D1 — Text-to-speech: source the voice model, don't write one
+## D1 — Voices: the phone's own system voices (Web Speech API)
 
-Writing a state-of-the-art neural TTS model from scratch is not achievable in
-this project (it requires large curated speech corpora, weeks of GPU training
-and a research team to reach "human-like with proper emphasis"). awdio
-therefore *integrates* voice models through a small engine interface and ships
-one engine:
+**User requirement: no server and no paid services.** awdio must work by
+opening a link on an iPhone, with private documents that never leave the
+phone. That rules out anything that synthesises speech elsewhere, and on a
+phone browser there is no practical way to run a neural TTS model locally. The
+only voices that remain are the ones the device already has, through
+`speechSynthesis`.
 
-| Engine | Where it runs | Cost | Quality | Word timestamps | Privacy |
-|---|---|---|---|---|---|
-| Kokoro-82M (`kokoro`) | locally, CPU | free, Apache-2.0 | very natural for its size; top of open-weights TTS leaderboards among small models; ~24 kHz | yes, native (duration predictor) | text never leaves the machine |
+Honest comparison:
 
-**Free-only (user decision).** An optional ElevenLabs cloud engine (user's own
-API key, `/with-timestamps` alignment) was built first and then removed: the
-user chose to keep awdio free and fully local, so nothing ever costs money or
-leaves the machine. The engine interface and registry stay, so another *local*
-engine can be added later; the API keeps `engine`/`voiceId` (currently always
-`kokoro`). British Kokoro voices are listed first because the user is in the
-UK; `af_heart` stays the default as the highest-graded voice.
+| Option | Runs where | Cost | Quality | Word timing | Privacy | Verdict |
+|---|---|---|---|---|---|---|
+| **System voices (Web Speech API)** | on the phone | free | standard iOS voices are clearly synthetic; the free **Enhanced/Premium** voices (Serena, Jamie, Daniel…) are good, though below the best neural voices | `boundary` events on iOS Safari and most local voices; estimated otherwise | text never leaves the phone | **chosen** |
+| Kokoro-82M on a self-hosted server (previous awdio) | user's server, CPU | free, but needs a machine running | very natural for its size | native timestamps | private to the server | needs a server: ruled out |
+| Kokoro / Piper in the browser (ONNX + WebAssembly/WebGPU) | on the phone | free | good (Kokoro) / synthetic (Piper) | Kokoro: yes | private | 80–300 MB model download, far slower than real time on iPhone CPUs, memory pressure kills the tab; not viable yet |
+| Cloud TTS (ElevenLabs, OpenAI, Azure, Google) | third party | paid per character | excellent | yes (ElevenLabs, Azure) | text sent to a third party | paid and not private: ruled out |
 
-Considered and rejected:
-- Browser Web Speech API: robotic, voice set depends on OS, word-boundary
-  events unreliable across browsers (none on iOS). Fails the quality bar.
-- Piper: fast and offline but noticeably synthetic; no timestamps.
-- Chatterbox / Orpheus / XTTS / F5-TTS / Dia: expressive open models, but they
-  need a GPU for anything near real time and emit no timestamps, so word
-  sync would require a separate forced-alignment pass (whisper-timestamped
-  or similar). Too heavy for a personal CPU box; good v2 candidates behind
-  the same engine interface.
-- Cloud voices (ElevenLabs, OpenAI `gpt-4o-mini-tts`, Azure Neural, Google
-  Chirp): excellent, but paid and they send the text to a third party. Out of
-  scope since awdio is free-only (see above).
+Consequences:
+- Quality depends on what is installed. awdio picks the best English voice
+  automatically (British first, Premium > Enhanced > standard), and when only
+  standard voices exist it says, in Settings and once in the reader, how to
+  download a free better voice in iOS Settings → Accessibility → Spoken
+  Content → Voices. A newly installed voice is used without any action.
+- Word sync is event- or estimate-based rather than exact timestamps; the
+  engine speaks one sentence per utterance so drift resets every sentence, and
+  the highlight never runs ahead of the sentence being spoken.
+- The engine interface (`SpeechEngine`'s injected `synth`/`createUtterance`)
+  would let an in-browser neural voice slot in later if phones get fast enough.
 
-The engine interface (`server/awdio/tts/base.py`) is deliberately tiny so a
-local engine from the list above can be added later.
+## D2 — No login, no accounts, no sync
 
-## D2 — No login; guest access only (optional access PIN)
-
-Progress is stored server-side in SQLite keyed by document. Because awdio is
-single-user and self-hosted, that already gives "pick up where I left off on
-any device" without an account. Per the brief, a login is therefore not
-required, so awdio is guest-only. For the case where the user hosts it on a
-reachable address, a single optional access PIN (`AWDIO_ACCESS_PIN`) gates the
-whole app. It is not an account system.
+There is nothing to log in to: no server holds anything. Documents, positions
+and settings live in IndexedDB on the phone (docs/DATA.md). The cost is that a
+second device starts empty; that is acceptable for a personal reading app and
+is the price of "documents never leave the phone". (The old optional access
+PIN existed only to protect a self-hosted server and is gone with it.)
 
 ## D3 — Word-indexed timeline
 
-Scrubbing is defined over word ordinals rather than seconds, so it is exact
-before any audio exists and does not change when the voice or speed changes.
-Durations are only used for the "time left" estimate.
+Scrubbing is defined over word ordinals rather than seconds, so it is exact for
+any voice and speed and needs no audio. Durations come only from the speaking-
+rate estimator and are used for "time left", library lengths and ±15 s skips.
 
-## D4 — Per-paragraph synthesis with on-disk cache and prefetch
+## D4 — One utterance per sentence
 
-Synthesising per block keeps time-to-first-audio low, makes seeking cheap
-(just load that block), gives natural pauses between paragraphs, and lets the
-cache be keyed by `(document, engine, voice, block)`. A background "prepare"
-job can synthesise the whole document.
+Speaking a whole block (or document) as one utterance would make seeking,
+speed changes and pausing coarse, and long utterances are cut off or stall in
+some browsers. Per-sentence utterances keep seeks precise (start at the exact
+word), let speed/voice changes apply within a sentence, bound estimate drift,
+and give natural pauses. Pause is implemented as cancel + re-speak from the
+current word because `speechSynthesis.pause()` is unreliable on iOS.
 
 ## D5 — Structure analysis is heuristic and local
 
 Titles/paragraphs come from format signals (PDF font sizes and spacing, DOCX
-styles, EPUB/MD headings). No language model reads the document. This keeps
-the "no judgement on the material" promise literally true and keeps content
-private.
+styles, EPUB/Markdown headings), computed in a Web Worker on the phone. No
+language model reads the document. This keeps the "no judgement on the
+material" promise literally true and keeps content private.
 
-## D6 — Python backend, React frontend
+## D6 — Static PWA on GitHub Pages
 
-The only mature path to local TTS with native word timestamps is the Python
-`kokoro` package, so the backend is Python (FastAPI). Document parsing
-libraries are also strongest in Python (PyMuPDF, python-docx, ebooklib). The
-frontend is React + TypeScript for a polished, touch-first UI. The server
-serves the built frontend so the app runs as one process.
+A static build is free to host, needs no maintenance and cannot leak anything
+because it never receives documents. GitHub Pages serves it over HTTPS (needed
+for service workers and `crypto.randomUUID`); the service worker precaches the
+app so it opens and works offline after the first visit; Add to Home Screen
+gives a full-screen app with lock-screen controls. Deploys run from GitHub
+Actions (`.github/workflows/pages.yml`).
+
+## D7 — Mobile only
+
+The user listens on an iPhone, so every screen is designed, tested and
+screenshotted at 393 × 852. Larger screens reuse the same layout, centred;
+they must not break but are not optimised.

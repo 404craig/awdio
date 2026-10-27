@@ -11,6 +11,7 @@ export function parseInWorker(file: File, onProgress: ProgressFn): Promise<Struc
         const finish = () => worker.terminate();
         worker.onmessage = ({ data: message }: MessageEvent<ParseResponse>) => {
           if (message.type === "progress") return onProgress(message.progress);
+          if (message.type !== "done" && message.type !== "error") return; // not ours
           finish();
           if (message.type === "done") resolve(message.doc);
           else reject(new ParseError(message.code, message.message));

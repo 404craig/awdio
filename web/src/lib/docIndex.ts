@@ -1,5 +1,5 @@
-import type { Block, Document, Page } from "../api/types";
-import { lastAtOrBefore, ordinalToPosition, type Position } from "../audio/timeline";
+import { blockCharStarts, lastAtOrBefore, ordinalToPosition, type Position } from "../audio/timeline";
+import type { Block, Document, Page } from "../types";
 
 /** Flat lookup tables over a parsed document, built once per open. */
 export interface DocIndex {
@@ -11,6 +11,9 @@ export interface DocIndex {
   pageStartOrdinal: number[];
   pageWordCount: number[];
   totalWords: number;
+  /** Spoken-character start of each block, and the total: time estimates are per character. */
+  blockCharStart: number[];
+  totalChars: number;
 }
 
 export function buildDocIndex(doc: Document): DocIndex {
@@ -29,6 +32,7 @@ export function buildDocIndex(doc: Document): DocIndex {
   const pageOfBlock = new Int32Array(blocks.length);
   doc.pages.forEach((page) => page.blocks.forEach((b) => (pageOfBlock[b.index] = page.index)));
   const last = blocks[blocks.length - 1];
+  const blockCharStart = blockCharStarts(blocks.map((b) => b.text));
   return {
     doc,
     pages: doc.pages,
@@ -37,7 +41,17 @@ export function buildDocIndex(doc: Document): DocIndex {
     pageStartOrdinal,
     pageWordCount,
     totalWords: last ? last.wordStart + last.wordCount : 0,
+    blockCharStart,
+    totalChars: last ? blockCharStart[blockCharStart.length - 1] + last.text.length : 0,
   };
+}
+
+/** Approximate spoken characters before a global word ordinal (interpolated within its block). */
+export function charsBefore(index: DocIndex, ordinal: number): number {
+  const pos = ordinalToPosition(index.blocks, ordinal);
+  const block = index.blocks[pos.blockIndex];
+  if (!block) return 0;
+  return index.blockCharStart[pos.blockIndex] + (block.text.length * pos.wordIndex) / Math.max(1, block.wordCount);
 }
 
 export const pageOfOrdinal = (index: DocIndex, ordinal: number) => lastAtOrBefore(index.pageStartOrdinal, ordinal);

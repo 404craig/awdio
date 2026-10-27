@@ -1,37 +1,23 @@
-import { getAudioFile, getBlockAudio, getHealth } from "../api";
-import { AudioEngine } from "./engine";
+/** The app's single speech engine, wired to the browser. */
+import { RateEstimator } from "./estimator";
+import { browserLockScreen } from "./lockScreen";
+import { SpeechEngine } from "./speech";
 
-const HEALTH_POLL_MS = 2000;
-
-function sleep(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(new DOMException("Aborted", "AbortError"));
-      },
-      { once: true },
-    );
-  });
+/** The platform synthesiser, looked up on use so the fake (?fakeSpeech=1) can be installed first. */
+export function systemSynth(): SpeechSynthesis | null {
+  return typeof window !== "undefined" && "speechSynthesis" in window ? window.speechSynthesis : null;
 }
 
-async function waitForEngine(engine: string, signal: AbortSignal): Promise<void> {
-  for (;;) {
-    await sleep(HEALTH_POLL_MS, signal);
-    try {
-      const health = await getHealth(signal);
-      if (health.engines.find((e) => e.id === engine)?.ready) return;
-    } catch (e) {
-      if (signal.aborted) throw e;
-    }
-  }
-}
+export const rateEstimator = new RateEstimator();
 
-/** The app owns exactly one audio element, so the engine is a module singleton. */
-export const engine = new AudioEngine({
-  fetchBlockAudio: (docId, blockIndex, engineId, voiceId, opts) => getBlockAudio(docId, blockIndex, engineId, voiceId, opts),
-  fetchAudioFile: (url, signal) => getAudioFile(url, signal),
-  waitForEngine,
+export const speech = new SpeechEngine({
+  synth: systemSynth,
+  createUtterance: (text) => new window.SpeechSynthesisUtterance(text),
+  estimator: rateEstimator,
+  lockScreen: browserLockScreen(import.meta.env.BASE_URL),
+  hidden: () => document.hidden,
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") speech.resync();
 });

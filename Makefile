@@ -1,24 +1,16 @@
-.PHONY: setup dev build run test server web
+.PHONY: setup dev build test preview
 
-setup:            ## install server (uv) and web (npm) dependencies
-	cd server && uv sync
+setup:            ## install dependencies
 	cd web && npm install
 
-server:           ## dev API server on :8000 with reload
-	cd server && uv run uvicorn awdio.main:app --reload --host 0.0.0.0 --port 8000
-
-web:              ## Vite dev server on :5173 (proxies /api to :8000)
+dev:              ## Vite dev server on :5173 (add ?demo=1 for sample documents)
 	cd web && npm run dev
 
-dev:              ## run both dev servers
-	$(MAKE) -j2 server web
-
-build:            ## build the frontend into web/dist (served by the API server)
+build:            ## production build into web/dist (BASE_PATH=/awdio/ for GitHub Pages)
 	cd web && npm run build
 
-run: build        ## production: single process on :8000
-	cd server && uv run uvicorn awdio.main:app --host 0.0.0.0 --port 8000
+test:             ## typecheck and unit tests
+	cd web && npm run typecheck && npm test
 
-test:             ## run server tests and web typecheck/tests
-	cd server && uv run pytest -q
-	cd web && npm run typecheck && npm test --if-present
+preview: build    ## serve the production build on :4173
+	cd web && npm run preview
