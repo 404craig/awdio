@@ -53,6 +53,14 @@ def test_synthetic_pages_never_split_blocks_and_break_on_chapters() -> None:
     assert all(len(p.blocks) > 0 for p in doc.pages)
 
 
+def test_front_matter_sharing_a_page_with_chapter_one_is_labelled_as_chapter_one() -> None:
+    blocks = [RawBlock("title", "A Book"), RawBlock("paragraph", "by Someone")]
+    blocks += [RawBlock("heading", "Chapter 1", level=1)] + [RawBlock("paragraph", _words(100)) for _ in range(7)]
+    blocks += [RawBlock("heading", "Chapter 2", level=1)] + [RawBlock("paragraph", _words(200)) for _ in range(2)]
+    doc = finalize(ParsedDocument("txt", blocks), "book.txt")
+    assert [p.label for p in doc.pages] == ["Ch. 1 · 1", "Ch. 1 · 2", "Ch. 2 · 1"]
+
+
 def test_pages_without_chapters_use_plain_numbers() -> None:
     blocks = [RawBlock("paragraph", _words(300)) for _ in range(4)]
     doc = finalize(ParsedDocument("txt", blocks), "notes.txt")

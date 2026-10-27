@@ -175,6 +175,8 @@ def _synthetic_pages(blocks: list[Block]) -> list[Page]:
             chapters.append(1 if starts_chapter else 0)
         if starts_chapter:
             chapter += 1
+            if chapters[-1] == 0:  # front matter (a title) sharing its page with chapter 1: label it as that chapter
+                chapters[-1] = chapter
         groups[-1].append(block)
         words += block.word_count
 
