@@ -28,7 +28,7 @@ export function buildDocument(
     if (!current.length) return;
     pageInChapter += 1;
     const index = pages.length;
-    const label = mode === "fixed" || chapter === 0 ? String(index + 1) : `${chapter} · ${pageInChapter}`;
+    const label = mode === "fixed" || chapter === 0 ? String(index + 1) : `Ch. ${chapter} · ${pageInChapter}`;
     pages.push({ index, label, blocks: current });
     current = [];
     currentWords = 0;

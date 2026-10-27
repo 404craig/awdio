@@ -50,9 +50,10 @@ export function sortDocuments(docs: DocumentSummary[]): DocumentSummary[] {
 
 function uploadErrorMessage(e: unknown): string {
   if (isApiError(e)) {
-    if (e.status === 415) return "That file type isn't supported. Try PDF, EPUB, DOCX, TXT or Markdown.";
+    if (e.code === "unsupported_type" || e.status === 415) return "That file type isn't supported. Try PDF, EPUB, DOCX, TXT or Markdown.";
     if (e.code === "no_text") return "No readable text found. Scanned PDFs aren't supported yet.";
-    if (e.status === 413) return "That file is larger than 50 MB.";
+    if (e.code === "parse_error") return "This file couldn't be read. It may be damaged or password-protected.";
+    if (e.code === "file_too_large" || e.status === 413) return "That file is larger than 50 MB.";
     return e.message;
   }
   return "Upload failed";

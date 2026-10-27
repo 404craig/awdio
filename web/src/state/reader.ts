@@ -49,9 +49,9 @@ export const selectOrdinal = (s: ReaderState) => (s.index ? positionToOrdinal(s.
 export const selectPlaybackPage = (s: ReaderState) => (s.index ? s.index.pageOfBlock[s.position.blockIndex] : 0);
 
 /** Opens a document in the reader and wires the engine to the store. Returns the teardown. */
-export function openReader(doc: Document): () => void {
+export function openReader(doc: Document, opts: { restart?: boolean } = {}): () => void {
   const index = buildDocIndex(doc);
-  const start: Position = doc.progress
+  const start: Position = doc.progress && !opts.restart
     ? {
         blockIndex: Math.min(doc.progress.blockIndex, index.blocks.length - 1),
         wordIndex: doc.progress.wordIndex,
@@ -64,7 +64,17 @@ export function openReader(doc: Document): () => void {
     engine.on("state", ({ playing }) => set({ playing })),
     engine.on("buffering", ({ reason }) => set({ buffering: reason })),
     engine.on("finished", () => useUi.getState().showToast("Finished. Nicely done.")),
-    engine.on("error", (e) => useUi.getState().showToast(e.message, "error")),
+    engine.on("error", (e) => {
+      const ui = useUi.getState();
+      if (e.code === "engine_not_configured") {
+        ui.showToast("Add your ElevenLabs API key to use this voice", "error");
+        ui.openSettings("listen");
+      } else if (e.code === "engine_error") {
+        ui.showToast("The cloud voice didn't respond. Try again or pick another voice.", "error");
+      } else {
+        ui.showToast(e.message, "error");
+      }
+    }),
     useSettings.subscribe((s, prev) => {
       if (s.settings.speed !== prev.settings.speed) engine.setRate(s.settings.speed);
       if (s.settings.engine !== prev.settings.engine || s.settings.voiceId !== prev.settings.voiceId) {

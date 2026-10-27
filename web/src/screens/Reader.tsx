@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { getDocument, isApiError, type Document } from "../api";
 import { BackToReading, ScrubLabel } from "../components/reader/Overlays";
@@ -15,6 +15,7 @@ import { useUi } from "../state/ui";
 
 export function Reader() {
   const { id = "" } = useParams();
+  const restart = (useLocation().state as { restart?: boolean } | null)?.restart === true;
   const [doc, setDoc] = useState<Document | null>(null);
   const [error, setError] = useState<string | null>(null);
   const index = useReader((s) => s.index);
@@ -35,11 +36,11 @@ export function Reader() {
 
   useEffect(() => {
     if (!doc) return;
-    const close = openReader(doc);
+    const close = openReader(doc, { restart });
     const index = useReader.getState().index;
-    if (doc.progress && doc.progress.wordOrdinal > 0 && index) {
+    if (!restart && doc.progress && doc.progress.wordOrdinal > 0 && index) {
       const page = index.pages[index.pageOfBlock[useReader.getState().position.blockIndex]];
-      useUi.getState().showToast(`Resumed at ${pageName(page).toLowerCase()}`);
+      useUi.getState().showToast(`Resumed at ${pageName(page).replace(/^Page/, "page")}`);
     }
     return close;
   }, [doc]);

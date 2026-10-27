@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AudioWaveform, CircleCheck, Headphones, Pencil, Play, Square, Trash2 } from "lucide-react";
+import { AudioWaveform, CircleCheck, Headphones, Pencil, Play, RotateCcw, Square, Trash2 } from "lucide-react";
 import type { DocumentSummary } from "../../api";
-import { formatDuration } from "../../lib/format";
+import { FINISHED_PERCENT, formatDuration } from "../../lib/format";
 import { useLibrary } from "../../state/library";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ProgressRing } from "../ProgressRing";
@@ -15,7 +15,9 @@ export function DocumentCard({ doc }: { doc: DocumentSummary }) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
-  const percent = Math.round(doc.progress?.percent ?? 0);
+  const finished =
+    !!doc.progress && (doc.progress.percent >= FINISHED_PERCENT || doc.progress.wordOrdinal >= doc.wordCount - 1);
+  const percent = finished ? 100 : Math.floor(doc.progress?.percent ?? 0);
   const started = (doc.progress?.wordOrdinal ?? 0) > 0;
   const preparing = doc.prepare.status === "running";
   const prepared = doc.prepare.status === "done";
@@ -51,22 +53,30 @@ export function DocumentCard({ doc }: { doc: DocumentSummary }) {
           <OverflowMenu label={`More actions for ${doc.title}`} items={items} />
         </div>
         <p className="mt-0.5 text-[13px] text-muted">
-          {formatDuration(started ? remaining : doc.estimatedSeconds)}
-          {started ? " left" : ""} · {doc.pageCount} {doc.pageCount === 1 ? "page" : "pages"}
+          {finished ? formatDuration(doc.estimatedSeconds) : formatDuration(started ? remaining : doc.estimatedSeconds)}
+          {started && !finished ? " left" : ""} · {doc.pageCount} {doc.pageCount === 1 ? "page" : "pages"}
         </p>
 
-        <div className="mt-3 flex items-center gap-2.5" aria-label={`${percent}% listened`}>
+        <div className="mt-3 flex items-center gap-2.5" aria-label={finished ? "Finished" : `${percent}% listened`}>
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-ink/[0.08]">
             <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${percent}%` }} />
           </div>
-          <span className="w-8 text-right text-[12px] font-medium tabular-nums text-muted">{percent}%</span>
+          <span className={`text-right text-[12px] font-medium tabular-nums text-muted ${finished ? "" : "w-8"}`}>
+            {finished ? "Finished" : `${percent}%`}
+          </span>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <button type="button" className="btn-primary h-10 px-4 text-[14px]" onClick={() => navigate(`/d/${doc.id}`)}>
-            {started ? <Play size={15} fill="currentColor" strokeWidth={0} aria-hidden /> : <Headphones size={16} aria-hidden />}
-            {started ? "Continue" : "Start listening"}
-          </button>
+          {finished ? (
+            <button type="button" className="btn-secondary h-10 px-4 text-[14px]" onClick={() => navigate(`/d/${doc.id}`, { state: { restart: true } })}>
+              <RotateCcw size={15} aria-hidden /> Listen again
+            </button>
+          ) : (
+            <button type="button" className="btn-primary h-10 px-4 text-[14px]" onClick={() => navigate(`/d/${doc.id}`)}>
+              {started ? <Play size={15} fill="currentColor" strokeWidth={0} aria-hidden /> : <Headphones size={16} aria-hidden />}
+              {started ? "Continue" : "Start listening"}
+            </button>
+          )}
           <PrepareStatus doc={doc} />
         </div>
       </div>

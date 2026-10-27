@@ -9,7 +9,13 @@ import { silentWavDataUri } from "./silence";
 import { computeSkipTarget, estimateWord, findWordAt, type Position } from "./timeline";
 
 export interface EngineDeps {
-  fetchBlockAudio(docId: string, blockIndex: number, engine: string, voiceId: string, signal: AbortSignal): Promise<BlockAudio>;
+  fetchBlockAudio(
+    docId: string,
+    blockIndex: number,
+    engine: string,
+    voiceId: string,
+    opts: { prefetch: boolean; signal: AbortSignal },
+  ): Promise<BlockAudio>;
   fetchAudioFile(url: string, signal: AbortSignal): Promise<Blob>;
   /** Resolves once the TTS engine reports ready (polls /api/health). */
   waitForEngine(engine: string, signal: AbortSignal): Promise<void>;
@@ -69,7 +75,7 @@ export class AudioEngine {
     error: new Set(),
   };
   private readonly cache = new LruCache<number, Entry>(CACHE_SIZE, (_k, e) => URL.revokeObjectURL(e.url));
-  private readonly pending = new Map<number, Promise<Entry>>();
+  private readonly pending = new Map<number, { promise: Promise<Entry>; prefetch: boolean }>();
   private readonly prefetchFailed = new Set<number>();
   private session = new AbortController();
   private doc: EngineDocument | null = null;
@@ -132,7 +138,9 @@ export class AudioEngine {
     this.measured = { seconds: 0, words: 0 };
     this.setRate(opts.rate);
     this.setupMediaSession(doc.title);
+    // Fetch the current block (on demand) and start prefetching right away, so play is instant.
     void this.activate(this.clampBlock(opts.start.blockIndex), { word: opts.start.wordIndex }, true);
+    this.prefetch();
   }
 
   unload(): void {
@@ -260,7 +268,7 @@ export class AudioEngine {
       if (this.bufferingReason !== "voice") this.setBuffering("loading");
       if (this.attached !== blockIndex) this.el.pause();
       try {
-        entry = await this.getEntry(blockIndex);
+        entry = await this.getEntry(blockIndex, false);
       } catch (e) {
         if (token === this.token && !isAbort(e)) this.fail(e);
         return;
@@ -314,11 +322,15 @@ export class AudioEngine {
     this.el.currentTime = time;
   }
 
-  private getEntry(blockIndex: number): Promise<Entry> {
+  /**
+   * BlockAudio JSON + audio blob for a block, deduplicated. An on-demand request for a block
+   * that is only being prefetched issues its own (higher priority) request.
+   */
+  private getEntry(blockIndex: number, prefetch: boolean): Promise<Entry> {
     const hit = this.cache.get(blockIndex);
     if (hit) return Promise.resolve(hit);
     const inflight = this.pending.get(blockIndex);
-    if (inflight) return inflight;
+    if (inflight && (prefetch || !inflight.prefetch)) return inflight.promise;
     const doc = this.doc;
     if (!doc) return Promise.reject(new DOMException("No document", "AbortError"));
     const { signal } = this.session;
@@ -326,9 +338,11 @@ export class AudioEngine {
     const promise = (async (): Promise<Entry> => {
       for (;;) {
         try {
-          const audio = await this.deps.fetchBlockAudio(doc.id, blockIndex, voice.engine, voice.voiceId, signal);
+          const audio = await this.deps.fetchBlockAudio(doc.id, blockIndex, voice.engine, voice.voiceId, { prefetch, signal });
           const blob = await this.deps.fetchAudioFile(audio.url, signal);
           if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+          const existing = this.cache.peek(blockIndex);
+          if (existing) return existing; // a parallel request for the same block won
           const entry: Entry = { audio, url: URL.createObjectURL(blob) };
           this.cache.set(blockIndex, entry, (k) => k === this.pos.blockIndex || k === this.attached);
           this.measured.seconds += audio.durationSec;
@@ -342,10 +356,10 @@ export class AudioEngine {
         }
       }
     })();
-    this.pending.set(blockIndex, promise);
+    this.pending.set(blockIndex, { promise, prefetch });
     promise
       .finally(() => {
-        if (this.pending.get(blockIndex) === promise) this.pending.delete(blockIndex);
+        if (this.pending.get(blockIndex)?.promise === promise) this.pending.delete(blockIndex);
       })
       .catch(() => {});
     return promise;
@@ -365,7 +379,7 @@ export class AudioEngine {
     if (next < 0) return;
     const session = this.session;
     this.prefetching = true;
-    this.getEntry(next)
+    this.getEntry(next, true)
       .catch(() => {
         if (session === this.session) this.prefetchFailed.add(next);
       })

@@ -44,21 +44,21 @@ export const pageOfOrdinal = (index: DocIndex, ordinal: number) => lastAtOrBefor
 
 export const positionAt = (index: DocIndex, ordinal: number): Position => ordinalToPosition(index.blocks, ordinal);
 
-/** Synthetic labels look like "3 · 2" or "Ch. 3 · 2" (chapter · page within chapter). */
-const CHAPTER_LABEL = /^(?:ch\.?\s*)?(\d+)\s*·\s*\d+$/i;
+/** Synthetic labels look like "Ch. 3 · 2" (chapter · page within chapter); PDFs use printed numbers. */
+const CHAPTER_LABEL = /^(?:ch\.?\s*)?\d+\s*·\s*\d+$/i;
 
-/** The page's printed number ("12", "xii") or its 1-based position for synthetic labels. */
-export function pageNumber(page: Page): string {
-  const label = page.label.trim();
-  return label && !CHAPTER_LABEL.test(label) ? label : String(page.index + 1);
+const labelOf = (page: Page) => page.label.trim() || String(page.index + 1);
+
+/** "Page 12" / "Page xii" for printed labels; synthetic chapter labels verbatim ("Ch. 3 · 2"). */
+export function pageName(page: Page): string {
+  const label = labelOf(page);
+  return CHAPTER_LABEL.test(label) ? label : `Page ${label}`;
 }
 
-export const pageName = (page: Page) => `Page ${pageNumber(page)}`;
-
-/** "Ch. 3" for synthetic chapter labels, otherwise null. */
-export function chapterOf(page: Page): string | null {
-  const m = CHAPTER_LABEL.exec(page.label.trim());
-  return m ? `Ch. ${m[1]}` : null;
+/** Left side of the "p. 12 / 240" indicator. */
+export function pageIndicator(page: Page): string {
+  const label = labelOf(page);
+  return CHAPTER_LABEL.test(label) ? label : `p. ${label}`;
 }
 
 /** First `n` words of a block with an ellipsis when truncated. */

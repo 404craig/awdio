@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { chapterOf, pageName, pageOfOrdinal, positionAt, snippet, tickStep } from "../../lib/docIndex";
+import { pageName, pageOfOrdinal, positionAt, snippet, tickStep } from "../../lib/docIndex";
 import { formatDuration, formatPercent } from "../../lib/format";
+import { useDelayedFlag } from "../../hooks/useDelayedFlag";
 import { player, selectOrdinal, useReader } from "../../state/reader";
 import { useSettings } from "../../state/settings";
 import type { DocIndex } from "../../lib/docIndex";
@@ -12,6 +13,7 @@ export function Timeline({ index }: { index: DocIndex }) {
   const ordinal = useReader(selectOrdinal);
   const scrub = useReader((s) => s.scrub);
   const voiceLoading = useReader((s) => s.buffering === "voice");
+  const slowAudio = useDelayedFlag(useReader((s) => s.buffering === "loading"), 1500);
   const speed = useSettings((s) => s.settings.speed);
   const trackRef = useRef<HTMLDivElement>(null);
   const [trackWidth, setTrackWidth] = useState(0);
@@ -107,10 +109,7 @@ export function Timeline({ index }: { index: DocIndex }) {
             aria-hidden
           >
             <div className="flex items-baseline justify-between gap-2 text-[13px] font-semibold tabular-nums">
-              <span className="truncate">
-                {pageName(page)}
-                {chapterOf(page) && <span className="font-medium text-muted"> · {chapterOf(page)}</span>}
-              </span>
+              <span className="truncate">{pageName(page)}</span>
               <span className="text-accent">{formatPercent(fraction)}</span>
             </div>
             <div className="mt-1 line-clamp-2 font-serif text-[13px] leading-snug text-muted">{snippet(targetBlock)}</div>
@@ -119,8 +118,10 @@ export function Timeline({ index }: { index: DocIndex }) {
       </div>
       <div className="-mt-1.5 flex items-center justify-between text-[12px] font-medium tabular-nums text-muted">
         <span>{formatPercent(fraction)}</span>
-        {voiceLoading ? (
-          <span className="text-accent">Preparing voice…</span>
+        {voiceLoading || slowAudio ? (
+          <span className="text-accent" role="status">
+            {voiceLoading ? "Preparing voice…" : "Preparing audio…"}
+          </span>
         ) : (
           <span>{remaining > 1 ? `${formatDuration(remaining)} left` : "Done"}</span>
         )}

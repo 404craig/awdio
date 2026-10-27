@@ -77,8 +77,18 @@ export const putProgress = (id: string, body: ProgressUpdate, keepalive = false)
   request<Progress>(`/documents/${enc(id)}/progress`, { method: "PUT", body, keepalive });
 
 // Audio
-export const getBlockAudio = (id: string, blockIndex: number, engine: string, voice: string, signal?: AbortSignal) =>
-  request<BlockAudio>(`/documents/${enc(id)}/blocks/${blockIndex}/audio?${voiceQuery(engine, voice)}`, { signal });
+/** `prefetch` lowers server priority so on-demand requests (the block the user waits for) go first. */
+export const getBlockAudio = (
+  id: string,
+  blockIndex: number,
+  engine: string,
+  voice: string,
+  opts: { prefetch?: boolean; signal?: AbortSignal } = {},
+) =>
+  request<BlockAudio>(
+    `/documents/${enc(id)}/blocks/${blockIndex}/audio?${voiceQuery(engine, voice)}${opts.prefetch ? "&prefetch=true" : ""}`,
+    { signal: opts.signal },
+  );
 export const getAudioFile = (url: string, signal?: AbortSignal) => requestBlob(url, signal);
 
 export const startPrepare = (id: string, engine: string, voice: string) =>

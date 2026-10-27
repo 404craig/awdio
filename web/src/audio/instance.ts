@@ -31,7 +31,7 @@ async function waitForEngine(engine: string, signal: AbortSignal): Promise<void>
 
 /** The app owns exactly one audio element, so the engine is a module singleton. */
 export const engine = new AudioEngine({
-  fetchBlockAudio: (docId, blockIndex, engineId, voiceId, signal) => getBlockAudio(docId, blockIndex, engineId, voiceId, signal),
+  fetchBlockAudio: (docId, blockIndex, engineId, voiceId, opts) => getBlockAudio(docId, blockIndex, engineId, voiceId, opts),
   fetchAudioFile: (url, signal) => getAudioFile(url, signal),
   waitForEngine,
 });

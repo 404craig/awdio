@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDuration, formatPercent, formatSpeed, nextCycleSpeed, stepSpeed } from "./format";
-import { chapterOf, pageName, pageNumber, tickStep } from "./docIndex";
+import { pageIndicator, pageName, tickStep } from "./docIndex";
 
 describe("format", () => {
   it("formats durations", () => {
@@ -33,12 +33,12 @@ describe("format", () => {
 
 describe("page naming", () => {
   const page = (index: number, label: string) => ({ index, label, blocks: [] });
-  it("uses printed labels and falls back to the position for chapter labels", () => {
+  it("renders printed labels with a Page prefix and chapter labels verbatim", () => {
     expect(pageName(page(13, "12"))).toBe("Page 12");
     expect(pageName(page(2, "xii"))).toBe("Page xii");
-    expect(pageName(page(35, "8 · 2"))).toBe("Page 36");
-    expect(pageNumber(page(35, "Ch. 8 · 2"))).toBe("36");
-    expect(chapterOf(page(35, "Ch. 8 · 2"))).toBe("Ch. 8");
-    expect(chapterOf(page(13, "12"))).toBeNull();
+    expect(pageName(page(35, "Ch. 8 · 2"))).toBe("Ch. 8 · 2");
+    expect(pageName(page(4, ""))).toBe("Page 5");
+    expect(pageIndicator(page(13, "12"))).toBe("p. 12");
+    expect(pageIndicator(page(35, "Ch. 8 · 2"))).toBe("Ch. 8 · 2");
   });
 });

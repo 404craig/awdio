@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Position } from "../../audio/timeline";
 import { prefersReducedMotion } from "../../hooks/useMediaQuery";
-import { chapterOf, pageName, type DocIndex } from "../../lib/docIndex";
+import { pageName, type DocIndex } from "../../lib/docIndex";
 import { player, selectPlaybackPage, useReader } from "../../state/reader";
 import { useSettings } from "../../state/settings";
 import { highlighter, wordAt } from "./highlight";
@@ -423,9 +423,7 @@ export function ReaderColumn({ index }: { index: DocIndex }) {
         const estimate =
           heights.current.get(page.index) ??
           Math.round(index.pageWordCount[page.index] * pxPerWord.current + (page.index > 0 ? DIVIDER_PX : 0));
-        const chapter = chapterOf(page);
-        const label = chapter ? `${pageName(page)} · ${chapter}` : pageName(page);
-        return <PageView key={page.index} page={page} label={label} placeholderHeight={rendered ? null : estimate} />;
+        return <PageView key={page.index} page={page} label={pageName(page)} placeholderHeight={rendered ? null : estimate} />;
       })}
     </div>
   );

@@ -56,6 +56,8 @@ function createState() {
     synthesized: new Set<string>(),
     startedAt: Date.now(),
     unlocked: new Set<string>(),
+    wrongPins: 0,
+    lockedUntil: 0,
   };
 }
 
@@ -137,7 +139,7 @@ export function mockApi(): Plugin {
     if (!p) return null;
     const block = blocksOf(doc)[p.blockIndex];
     const wordOrdinal = block.wordStart + p.wordIndex;
-    return { ...p, wordOrdinal, percent: Math.round((wordOrdinal / Math.max(1, doc.wordCount - 1)) * 1000) / 10 };
+    return { ...p, wordOrdinal, percent: Math.round((wordOrdinal / Math.max(1, doc.wordCount)) * 1000) / 10 };
   };
 
   const summary = (doc: Document): DocumentSummary => {
@@ -168,7 +170,16 @@ export function mockApi(): Plugin {
     if (a === "unlock" && method === "POST") {
       const body = await readJson(req);
       await sleep(250);
-      if (body.pin !== env.pin) return fail(res, 401, "wrong_pin", "That PIN didn’t work"), true;
+      if (Date.now() < s.lockedUntil) return fail(res, 429, "too_many_attempts", "Too many attempts"), true;
+      if (body.pin !== env.pin) {
+        s.wrongPins += 1;
+        if (s.wrongPins >= 5) {
+          s.wrongPins = 0;
+          s.lockedUntil = Date.now() + 60_000;
+        }
+        return fail(res, 401, "wrong_pin", "That PIN didn’t work"), true;
+      }
+      s.wrongPins = 0;
       const token = Math.random().toString(36).slice(2);
       s.unlocked.add(token);
       send(res, 204, undefined, { "Set-Cookie": `awdio_session=${token}; HttpOnly; Path=/; Max-Age=15552000; SameSite=Lax` });
@@ -230,7 +241,7 @@ export function mockApi(): Plugin {
         const body = await readBody(req);
         const file = parseMultipartFile(req, body);
         if (!file) return fail(res, 400, "bad_request", "Expected a multipart field named file"), true;
-        if (body.length > 50 * 1024 * 1024) return fail(res, 413, "too_large", "Files must be 50 MB or smaller"), true;
+        if (body.length > 50 * 1024 * 1024) return fail(res, 413, "file_too_large", "Files must be 50 MB or smaller"), true;
         const ext = file.filename.split(".").pop()?.toLowerCase() ?? "";
         const sourceType = SUPPORTED[ext];
         if (!sourceType) return fail(res, 415, "unsupported_type", "awdio reads PDF, EPUB, DOCX, TXT and Markdown"), true;
@@ -289,10 +300,15 @@ export function mockApi(): Plugin {
     if (c === "blocks" && e === "audio") {
       const engine = query.get("engine") ?? "kokoro";
       const voiceId = query.get("voice") ?? "af_heart";
-      if (!voiceKnown(engine, voiceId)) return fail(res, 400, "unknown_voice", "Unknown engine or voice"), true;
+      if (engine !== "kokoro" && engine !== "elevenlabs") return fail(res, 400, "unknown_engine", "Unknown engine"), true;
+      if (engine === "elevenlabs" && !s.settings.elevenLabsConfigured) {
+        return fail(res, 400, "engine_not_configured", "Add an ElevenLabs API key first"), true;
+      }
+      if (!voiceKnown(engine, voiceId)) return fail(res, 400, "unknown_voice", "Unknown voice"), true;
       if (engine === "kokoro" && !kokoroReady()) return fail(res, 503, "engine_not_ready", "The voice model is still loading"), true;
       const index = Number(d);
-      if (!Number.isInteger(index) || index < 0 || index >= doc.blockCount) return fail(res, 404, "not_found", "No such block"), true;
+      if (!Number.isInteger(index) || index < 0 || index >= doc.blockCount) return fail(res, 404, "block_not_found", "No such block"), true;
+      // `prefetch=true` only lowers priority on the real server; the mock treats it the same.
       const cacheKey = `${doc.id}~${index}~${engine}~${voiceId}`;
       const prepared = prepareStatus(doc, engine, voiceId);
       if (!s.synthesized.has(cacheKey) && prepared.status !== "done") await sleep(env.latency);

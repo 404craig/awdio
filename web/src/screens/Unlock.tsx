@@ -26,7 +26,11 @@ export function Unlock() {
     } catch (err) {
       setPin("");
       setAttempt((a) => a + 1);
-      setError(isApiError(err) && err.status === 429 ? "Too many attempts. Wait a minute and try again." : "That PIN didn't work.");
+      setError(
+        isApiError(err, "too_many_attempts") || (isApiError(err) && err.status === 429)
+          ? "Too many attempts. Try again in a minute."
+          : "That PIN didn't work.",
+      );
     } finally {
       setBusy(false);
     }

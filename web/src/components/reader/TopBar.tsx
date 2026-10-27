@@ -1,6 +1,6 @@
 import { ALargeSmall, AudioLines, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import { pageNumber, pageOfOrdinal, type DocIndex } from "../../lib/docIndex";
+import { pageIndicator, pageOfOrdinal, type DocIndex } from "../../lib/docIndex";
 import { useReader } from "../../state/reader";
 import { useUi } from "../../state/ui";
 
@@ -16,7 +16,7 @@ export function TopBar({ index }: { index: DocIndex }) {
         <div className="min-w-0 flex-1 px-1 leading-tight">
           <h1 className="truncate text-[15px] font-semibold tracking-[-0.01em]">{index.doc.title}</h1>
           <p className="text-[12px] font-medium tabular-nums text-muted" aria-live="polite">
-            p. {pageNumber(index.pages[page])} / {index.pages.length}
+            {pageIndicator(index.pages[page])} / {index.pages.length}
           </p>
         </div>
         <button type="button" className="tap text-ink hover:bg-ink/5" aria-label="Reading settings" title="Display" onClick={() => openSettings("read")}>
